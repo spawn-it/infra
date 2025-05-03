@@ -4,6 +4,10 @@ terraform {
 
 module "so3" {
   source = "./so3"
-  config = var.so3["minio"]
+  config = var.so3
 }
 
+module "backend" {
+  source = "./backend"
+  config = var.backend
+}

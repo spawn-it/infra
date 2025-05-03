@@ -9,27 +9,26 @@ terraform {
 
 resource "docker_image" "minio" {
   name         = var.config.image
-  keep_locally = true
+  keep_locally = false
 }
 
 resource "docker_container" "minio" {
-  name  = "minio"
+  name  = var.config.container_name
   image = docker_image.minio.image_id
-
-  env = [
-    "MINIO_ROOT_USER=${var.config.root_user}",
-    "MINIO_ROOT_PASSWORD=${var.config.root_password}"
-  ]
+    command = [
+    "server",
+    "/data",
+    format("--console-address=:%d", var.config.console_port)
+    ]
+  env = [ for k, v in var.config.env_vars : "${k}=${v}" ]
 
   ports {
-    internal = 9000
-    external = var.config.api_port
+    internal = var.config.port
+    external = var.config.port
   }
 
   ports {
-    internal = 9001
+    internal = var.config.console_port
     external = var.config.console_port
   }
-
-  command = ["server", var.config.volume_path, "--console-address", ":9001"]
 }
