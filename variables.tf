@@ -5,7 +5,7 @@ variable "so3" {
         image          = string
         root_user      = string
         root_password  = string
-        port           = number
+        external_port  = number
         console_port   = number
         env_vars       = map(string)
     })
@@ -16,7 +16,8 @@ variable "backend" {
     type = object({
         container_name = string
         image          = string
-        port           = number
+        internal_port  = string
+        external_port  = number
         env_vars       = map(string)
     })
 }

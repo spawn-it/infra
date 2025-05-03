@@ -18,8 +18,8 @@ resource "docker_container" "backend" {
   env = [ for k, v in var.config.env_vars : "${k}=${v}" ]
 
   ports {
-    internal = "8000"
-    external = var.config.port
+    internal = var.config.internal_port
+    external = var.config.external_port
   }
   
   restart = "unless-stopped"

@@ -5,7 +5,7 @@ variable "config" {
         image          = string
         root_user      = string
         root_password  = string
-        port           = number
+        external_port  = number
         console_port   = number
         env_vars       = map(string)
     })
