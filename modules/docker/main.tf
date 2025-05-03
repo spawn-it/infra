@@ -25,6 +25,16 @@ resource "docker_container" "instance" {
       external = tonumber(ports.value)
     }
   }
+
+  dynamic "mounts" {
+    for_each = try(var.config.volume.type == "volume", false) ? [var.config.volume] : []
+    content {
+      type   = "volume"
+      source = mounts.value.source
+      target = mounts.value.container_path
+      read_only = false
+    }
+  }
   
   restart = "unless-stopped"
 
