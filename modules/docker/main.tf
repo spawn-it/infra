@@ -7,20 +7,25 @@ terraform {
   }
 }
 
-resource "docker_image" "backend" {
+resource "docker_image" "instance" {
   name         = var.config.image
   keep_locally = false
 }
 
-resource "docker_container" "backend" {
+resource "docker_container" "instance" {
   name  = var.config.container_name
-  image = docker_image.backend.image_id
+  image = docker_image.instance.image_id
   env = [ for k, v in var.config.env_vars : "${k}=${v}" ]
+  command = var.config.command
 
-  ports {
-    internal = var.config.internal_port
-    external = var.config.external_port
+  dynamic "ports" {
+    for_each = var.config.ports
+    content {
+      internal = tonumber(ports.key)
+      external = tonumber(ports.value)
+    }
   }
   
   restart = "unless-stopped"
+
 }

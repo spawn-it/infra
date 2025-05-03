@@ -3,11 +3,11 @@ terraform {
 }
 
 module "so3" {
-  source = "./so3"
+  source = "./resources/so3"
   config = var.so3
 }
 
 module "backend" {
-  source = "./backend"
+  source = "./resources/backend"
   config = var.backend
 }
