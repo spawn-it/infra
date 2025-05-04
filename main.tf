@@ -2,12 +2,13 @@ terraform {
   required_version = ">= 1.0.0"
 }
 
-module "so3" {
-  source = "./resources/so3"
-  config = var.so3
+module "instances" {
+  source = "./instances"
+  instances = var.instances
 }
 
-module "backend" {
-  source = "./resources/backend"
-  config = var.backend
+module "configs" {
+  depends_on = [ module.instances ]
+  source = "./configs"
+  configs = var.configs
 }

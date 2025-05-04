@@ -1,7 +1,7 @@
-variable "so3" {
-  description = "Configuration of the SO3 instance"
+variable "instances" {
+  description = "Defines the instances to be created"
 }
 
-variable "backend" {
-  description = "Configuration du backend Python (FastAPI)"
+variable "configs" {
+  description = "Defines the configs to be created"
 }
