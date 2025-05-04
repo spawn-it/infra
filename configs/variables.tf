@@ -1,9 +1,3 @@
-variable "alias_name" {
-  type = string
-  default = "minio"
-  description = "The alias name for the provider"
-}
-
 variable "s3_region" {
   type = string
   default = "us-east-1"
@@ -12,7 +6,7 @@ variable "s3_region" {
 
 variable "s3_bucket" {
   type = string
-  default = "tfstates"
+  default = "spawn-it-bucket"
   description = "The name of the S3 bucket to be created"
 }
 

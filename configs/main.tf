@@ -25,4 +25,7 @@ provider "aws" {
 module "s3_configs" {
   source = "../modules/configs/s3"
   s3_bucket = var.s3_bucket
+  providers = {
+    aws = aws.s3
+  }
 }

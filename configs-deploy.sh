@@ -20,10 +20,11 @@ case "$ACTION" in
     ;;
   destroy)
     echo "Destroying Opentofu-managed infrastructure..."
+    tofu init -upgrade
     tofu destroy -auto-approve
     ;;
   *)
-    echo "Usage: $0 [apply|down]"
+    echo "Usage: $0 [apply|destroy]"
     exit 1
     ;;
 esac

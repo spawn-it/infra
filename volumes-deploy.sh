@@ -20,6 +20,7 @@ case "$ACTION" in
     ;;
   destroy)
     echo "Destroying Opentofu-managed infrastructure..."
+    tofu init -upgrade
     tofu destroy -auto-approve
     ;;
   *)
