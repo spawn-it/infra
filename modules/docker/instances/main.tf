@@ -1,7 +1,7 @@
 terraform {
   required_providers {
     docker = {
-      source = "kreuzwerker/docker"
+      source  = "kreuzwerker/docker"
       version = "~> 3.0.1"
     }
   }
@@ -21,11 +21,11 @@ resource "null_resource" "check_volume_exists" {
 
 
 resource "docker_container" "instance" {
-  depends_on = [ null_resource.check_volume_exists ]
-  name  = var.container_name
-  image = docker_image.instance.image_id
-  env   = [for k, v in var.env_vars : "${k}=${v}"]
-  command = var.command
+  depends_on = [null_resource.check_volume_exists]
+  name       = var.container_name
+  image      = docker_image.instance.image_id
+  env        = [for k, v in var.env_vars : "${k}=${v}"]
+  command    = var.command
 
   dynamic "ports" {
     for_each = var.ports
@@ -38,11 +38,14 @@ resource "docker_container" "instance" {
   dynamic "volumes" {
     for_each = var.has_volume ? [1] : []
     content {
-      volume_name   = var.volume_name
-      container_path    = "/data"
-      read_only = false
+      volume_name    = var.volume_name
+      container_path = "/data"
+      read_only      = false
     }
   }
   network_mode = "bridge"
+  networks_advanced {
+    name = "bridge"
+  }
   restart = "unless-stopped"
 }

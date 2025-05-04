@@ -1,5 +1,5 @@
 module "docker_instance" {
-  source = "../../modules/instances/docker"
+  source         = "../../modules/docker/instances"
   image          = var.config.image
   container_name = var.config.container_name
   ports          = var.config.ports
@@ -7,4 +7,5 @@ module "docker_instance" {
   command        = var.config.command
   has_volume     = var.config.has_volume
   volume_name    = "volume-${var.config.container_name}"
+  network_name   = "spawn-it-network"
 }

@@ -36,3 +36,8 @@ variable "volume_name" {
   type        = string
   description = "The Docker volume that must exist"
 }
+
+variable "network_name" {
+  type        = string
+  description = "The Docker network that must exist"
+}

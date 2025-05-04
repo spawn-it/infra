@@ -22,7 +22,7 @@ variable "instances" {
         "MINIO_ROOT_USER"     = "minioadmin"
         "MINIO_ROOT_PASSWORD" = "minioadmin"
       }
-      command = ["server", "/data", "--console-address", ":9001"]
+      command    = ["server", "/data", "--console-address", ":9001"]
       has_volume = true
     }
 
@@ -41,6 +41,38 @@ variable "instances" {
         "S3_BUCKET"      = "tfstates"
       }
       command = ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+    },
+    authentik = {
+      provider       = "docker"
+      container_name = "spawn-it-authentik"
+      image          = "ghcr.io/goauthentik/server:latest"
+      ports = {
+        "9000" = "9002"
+        "9443" = "9443"
+      }
+      env_vars = {
+        "AUTHENTIK_SECRET_KEY"           = "change-me-secret-key"
+        "AUTHENTIK_POSTGRESQL__HOST"     = "spawn-it-authentik-db"
+        "AUTHENTIK_POSTGRESQL__NAME"     = "authentik"
+        "AUTHENTIK_POSTGRESQL__USER"     = "authentik"
+        "AUTHENTIK_POSTGRESQL__PASSWORD" = "authentik"
+      }
+      command = []
+    },
+    authentikdb = {
+      provider       = "docker"
+      container_name = "spawn-it-authentik-db"
+      image          = "postgres:15"
+      ports = {
+        "5432" = "5432"
+      }
+      env_vars = {
+        "POSTGRES_DB"       = "authentik"
+        "POSTGRES_USER"     = "authentik"
+        "POSTGRES_PASSWORD" = "authentik"
+      }
+      command    = []
+      has_volume = true
     }
   }
 }

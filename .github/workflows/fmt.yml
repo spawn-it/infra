@@ -1,0 +1,37 @@
+name: Check Terraform Formatting
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  format-check:
+    runs-on: fedora-latest
+
+    container:
+      image: fedora:latest
+      options: --user root
+
+    steps:
+      - name: Install required tools (OpenTofu, git)
+        run: |
+          dnf install -y opentofu git
+
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Format .tf files
+        run: |
+          tofu fmt -recursive
+
+      - name: Check for formatting issues
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "❌ Some .tf files need formatting:"
+            git diff
+            exit 1
+          else
+            echo "✅ All .tf files are correctly formatted."
+          fi
