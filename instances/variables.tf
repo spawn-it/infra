@@ -23,6 +23,7 @@ variable "instances" {
         "MINIO_ROOT_PASSWORD" = "minioadmin"
       }
       command = ["server", "/data", "--console-address", ":9001"]
+      has_volume = true
     }
 
     backend = {
