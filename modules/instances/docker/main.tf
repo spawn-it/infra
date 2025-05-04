@@ -1,41 +1,48 @@
 terraform {
   required_providers {
     docker = {
-      source  = "kreuzwerker/docker"
-      version = "3.4.0"
+      source = "kreuzwerker/docker"
+      version = "~> 3.0.1"
     }
   }
 }
 
 resource "docker_image" "instance" {
-  name         = var.config.image
+  name         = var.image
   keep_locally = false
 }
 
+resource "null_resource" "check_volume_exists" {
+  count = var.has_volume ? 1 : 0
+  provisioner "local-exec" {
+    command = "docker volume inspect ${var.volume_name} > /dev/null 2>&1 || (echo \"Docker volume '${var.volume_name}' does not exist\" && exit 1)"
+  }
+}
+
+
 resource "docker_container" "instance" {
-  name  = var.config.container_name
+  depends_on = [ null_resource.check_volume_exists ]
+  name  = var.container_name
   image = docker_image.instance.image_id
-  env = [ for k, v in var.config.env_vars : "${k}=${v}" ]
-  command = var.config.command
+  env   = [for k, v in var.env_vars : "${k}=${v}"]
+  command = var.command
 
   dynamic "ports" {
-    for_each = var.config.ports
+    for_each = var.ports
     content {
       internal = tonumber(ports.key)
       external = tonumber(ports.value)
     }
   }
 
-  dynamic "mounts" {
-    for_each = try(var.config.volume.type == "volume", false) ? [var.config.volume] : []
+  dynamic "volumes" {
+    for_each = var.has_volume ? [1] : []
     content {
-      type   = "volume"
-      source = mounts.value.source
-      target = mounts.value.container_path
+      volume_name   = var.volume_name
+      container_path    = "/data"
       read_only = false
     }
   }
-  
+  network_mode = "bridge"
   restart = "unless-stopped"
-
 }
