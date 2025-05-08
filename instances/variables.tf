@@ -42,6 +42,24 @@ variable "instances" {
       }
       command = ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
     },
+
+    frontend = {
+      provider       = "docker"
+      container_name = "spawn-it-frontend"
+      image          = "ghcr.io/spawn-it/frontend:latest"
+      ports = {
+        "3000" = "3000"
+      }
+      env_vars = {
+        "KEYCLOAK_URL"           = "http://spawn-it-keycloak:8080"
+        "KEYCLOAK_REALM"         = "spawn-it"
+        "KEYCLOAK_CLIENT_ID"     = "master"
+        "KEYCLOAK_SCOPE"         = "openid profile email"
+        "KEYCLOAK_REDIRECT_URI"  = "http://localhost:3000/callback"
+      }
+      command = []
+    },
+
     keycloak = {
       provider       = "docker"
       container_name = "spawn-it-keycloak"
