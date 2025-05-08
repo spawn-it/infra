@@ -19,6 +19,10 @@ resource "null_resource" "check_volume_exists" {
   }
 }
 
+data "docker_network" "custom_network" {
+  name = "spawn-it-net"
+}
+
 
 resource "docker_container" "instance" {
   depends_on = [null_resource.check_volume_exists]
@@ -43,9 +47,8 @@ resource "docker_container" "instance" {
       read_only      = false
     }
   }
-  network_mode = "bridge"
   networks_advanced {
-    name = "bridge"
+    name = data.docker_network.custom_network.name
   }
   restart = "unless-stopped"
 }

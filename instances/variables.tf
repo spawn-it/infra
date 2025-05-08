@@ -31,7 +31,7 @@ variable "instances" {
       container_name = "spawn-it-backend"
       image          = "ghcr.io/spawn-it/backend:latest"
       ports = {
-        "8000" = "8080"
+        "8000" = "8000"
       }
       env_vars = {
         "S3_URL"         = "http://localhost:9000"
@@ -42,37 +42,18 @@ variable "instances" {
       }
       command = ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
     },
-    authentik = {
+    keycloak = {
       provider       = "docker"
-      container_name = "spawn-it-authentik"
-      image          = "ghcr.io/goauthentik/server:latest"
+      container_name = "spawn-it-keycloak"
+      image          = "quay.io/keycloak/keycloak:24.0.1"
       ports = {
-        "9000" = "9002"
-        "9443" = "9443"
+        "8080" = "8080"
       }
       env_vars = {
-        "AUTHENTIK_SECRET_KEY"           = "change-me-secret-key"
-        "AUTHENTIK_POSTGRESQL__HOST"     = "spawn-it-authentik-db"
-        "AUTHENTIK_POSTGRESQL__NAME"     = "authentik"
-        "AUTHENTIK_POSTGRESQL__USER"     = "authentik"
-        "AUTHENTIK_POSTGRESQL__PASSWORD" = "authentik"
+        "KEYCLOAK_ADMIN"         = "admin"
+        "KEYCLOAK_ADMIN_PASSWORD" = "admin"
       }
-      command = []
-    },
-    authentikdb = {
-      provider       = "docker"
-      container_name = "spawn-it-authentik-db"
-      image          = "postgres:15"
-      ports = {
-        "5432" = "5432"
-      }
-      env_vars = {
-        "POSTGRES_DB"       = "authentik"
-        "POSTGRES_USER"     = "authentik"
-        "POSTGRES_PASSWORD" = "authentik"
-      }
-      command    = []
-      has_volume = true
+      command = ["start-dev"]
     }
   }
 }
