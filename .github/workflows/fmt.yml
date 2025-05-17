@@ -1,4 +1,4 @@
-name: Check Terraform Formatting
+name: Auto-Format Terraform
 
 on:
   push:
@@ -7,31 +7,31 @@ on:
     branches: [main]
 
 jobs:
-  format-check:
+  fmt-and-push:
     runs-on: fedora-latest
 
-    container:
-      image: fedora:latest
-      options: --user root
-
     steps:
-      - name: Install required tools (OpenTofu, git)
-        run: |
-          dnf install -y opentofu git
-
-      - name: Checkout repository
+      - name: Checkout repo
         uses: actions/checkout@v3
+        with:
+          persist-credentials: true  # permet le push
 
-      - name: Format .tf files
+      - name: Install OpenTofu
+        run: |
+          dnf install -y opentofu
+
+      - name: Terraform fmt
         run: |
           tofu fmt -recursive
 
-      - name: Check for formatting issues
+      - name: Commit & Push if changes
         run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
           if [ -n "$(git status --porcelain)" ]; then
-            echo "❌ Some .tf files need formatting:"
-            git diff
-            exit 1
+            git add -A
+            git commit -m "chore: apply terraform fmt via CI"
+            git push
           else
-            echo "✅ All .tf files are correctly formatted."
+            echo "✅ No formatting changes to commit."
           fi
