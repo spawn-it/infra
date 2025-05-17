@@ -8,21 +8,24 @@ on:
 
 jobs:
   fmt-and-push:
-    runs-on: fedora-latest
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
         with:
-          persist-credentials: true  # permet le push
+          persist-credentials: true
 
-      - name: Install OpenTofu
-        run: |
-          dnf install -y opentofu
+      - name: Run on Fedora container
+        container:
+          image: fedora:latest
+          options: --user root
 
-      - name: Terraform fmt
-        run: |
-          tofu fmt -recursive
+      - name: Install OpenTofu (dans Fedora)
+        run: dnf install -y opentofu
+
+      - name: Terraform fmt (dans Fedora)
+        run: tofu fmt -recursive
 
       - name: Commit & Push if changes
         run: |
