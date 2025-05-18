@@ -16,9 +16,16 @@ if [[ "$ACTION" == "apply" ]]; then
   echo "==> Deploying configs..."
   ./configs-deploy.sh apply
 
+  echo "==> Deploying users..."
+  ./users-deploy.sh apply
+
   echo "Infrastructure successfully deployed."
 
 elif [[ "$ACTION" == "destroy" ]]; then
+
+  echo "==> Destroying users..."
+  ./users-deploy.sh destroy
+  
   echo "==> Destroying configs..."
   ./configs-deploy.sh destroy
 

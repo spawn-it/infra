@@ -1,12 +1,13 @@
 terraform {
   required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = ">= 5.0.0"
+    minio = {
+      source = "aminueza/minio"
+      version = "3.5.2"
     }
   }
 }
 
-resource "aws_s3_bucket" "bucket" {
+
+resource "minio_s3_bucket" "bucket" {
   bucket = var.s3_bucket
 }

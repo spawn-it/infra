@@ -38,7 +38,7 @@ variable "instances" {
         "S3_CONSOLE_URL" = "http://localhost:9001"
         "S3_ACCESS_KEY"  = "minioadmin"
         "S3_SECRET_KEY"  = "minioadmin"
-        "S3_BUCKET"      = "tfstates"
+        "S3_BUCKET"      = "spawn-it-bucket"
       }
       command = ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
     },
@@ -51,11 +51,11 @@ variable "instances" {
         "3000" = "3000"
       }
       env_vars = {
-        "KEYCLOAK_URL"           = "http://spawn-it-keycloak:8080"
-        "KEYCLOAK_REALM"         = "spawn-it"
-        "KEYCLOAK_CLIENT_ID"     = "master"
-        "KEYCLOAK_SCOPE"         = "openid profile email"
-        "KEYCLOAK_REDIRECT_URI"  = "http://localhost:3000/callback"
+        "KEYCLOAK_URL"          = "http://spawn-it-keycloak:8080"
+        "KEYCLOAK_REALM"        = "spawn-it-realm"
+        "KEYCLOAK_CLIENT_ID"    = "spawn-it-client"
+        "KEYCLOAK_SCOPE"        = "openid profile email"
+        "KEYCLOAK_REDIRECT_URI" = "http://localhost:3000/callback"
       }
       command = []
     },
@@ -68,7 +68,7 @@ variable "instances" {
         "8080" = "8080"
       }
       env_vars = {
-        "KEYCLOAK_ADMIN"         = "admin"
+        "KEYCLOAK_ADMIN"          = "admin"
         "KEYCLOAK_ADMIN_PASSWORD" = "admin"
       }
       command = ["start-dev"]
