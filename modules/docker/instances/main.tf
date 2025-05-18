@@ -51,7 +51,7 @@ resource "docker_container" "instance" {
     name = data.docker_network.custom_network.name
   }
   lifecycle {
-    ignore_changes = [ network_mode, ports, command ]
+    ignore_changes = [network_mode, ports, command]
   }
   restart = "unless-stopped"
 }

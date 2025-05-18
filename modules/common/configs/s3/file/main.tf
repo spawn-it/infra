@@ -1,13 +1,14 @@
 terraform {
   required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = ">= 5.0.0"
+    minio = {
+      source  = "aminueza/minio"
+      version = "3.5.2"
     }
   }
 }
 
-resource "aws_s3_object" "object_creation" {
+resource "minio_s3_object" "object_creation" {
+  provider     = minio.s3
   bucket       = var.s3_bucket
   key          = var.file
   content      = var.content

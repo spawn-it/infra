@@ -1,15 +1,15 @@
 terraform {
   required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = ">= 5.0.0"
+    minio = {
+      source  = "aminueza/minio"
+      version = "3.5.2"
     }
   }
 }
 
-resource "aws_s3_object" "folder" {
-  bucket       = var.s3_bucket
-  key          = "${var.folder_name}/"
+resource "minio_s3_object" "folder" {
+  bucket_name  = var.s3_bucket
+  object_name  = "${var.folder_name}/ "
   content_type = "application/x-directory"
-  content      = ""
+  content      = " "
 }
