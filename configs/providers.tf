@@ -19,10 +19,10 @@ provider "minio" {
 }
 
 provider "keycloak" {
-  alias           = "keycloak"
-  url             = var.keycloak_url
-  realm           = var.admin_realm
-  client_id       = "admin-cli"
-  username        = var.admin_user
-  password        = var.admin_password
+  alias     = "keycloak"
+  url       = var.keycloak_url
+  realm     = var.admin_realm
+  client_id = "admin-cli"
+  username  = var.admin_user
+  password  = var.admin_password
 }
