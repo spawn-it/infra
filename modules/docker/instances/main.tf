@@ -10,12 +10,13 @@ terraform {
 # Pull the Docker image specified by the 'image' variable
 resource "docker_image" "instance" {
   name         = var.image
-  keep_locally = false  # Do not retain the image locally after container removal
+  keep_locally = false # Do not retain the image locally after container removal
 }
 
 # Check if the specified Docker volume exists before container creation
 resource "null_resource" "check_volume_exists" {
-  count = var.has_volume ? 1 : 0  # Only run if a volume is required
+  # Only run if a volume is required
+  count = var.has_volume ? 1 : 0
 
   provisioner "local-exec" {
     command = "docker volume inspect ${var.volume_name} > /dev/null 2>&1 || (echo \"Docker volume '${var.volume_name}' does not exist\" && exit 1)"
@@ -29,16 +30,16 @@ data "docker_network" "custom_network" {
 
 # Create the Docker container
 resource "docker_container" "instance" {
-  depends_on  = [null_resource.check_volume_exists]  # Explicit dependency on volume check
+  depends_on = [null_resource.check_volume_exists] # Explicit dependency on volume check
 
-  name        = var.container_name
-  image       = docker_image.instance.image_id
-  env         = [for k, v in var.env_vars : "${k}=${v}"]
-  command     = var.command
+  name    = var.container_name
+  image   = docker_image.instance.image_id
+  env     = [for k, v in var.env_vars : "${k}=${v}"]
+  command = var.command
 
   # Configure port mappings between host and container
   dynamic "ports" {
-    for_each = var.ports  # Expected format: { "container_port" = "host_port" }
+    for_each = var.ports # Expected format: { "container_port" = "host_port" }
     content {
       internal = tonumber(ports.key)
       external = tonumber(ports.value)

@@ -1,0 +1,14 @@
+repos:
+  - repo: local
+    hooks:
+      - id: tofu-fmt
+        name: "tofu fmt"
+        entry: tofu fmt -recursive
+        language: system
+        types: [terraform]
+
+      - id: generate-docs
+        name: "generate terraform docs"
+        entry: ./generate-docs.sh
+        language: script
+        types: [terraform]
