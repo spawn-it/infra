@@ -25,8 +25,8 @@ jobs:
           curl -sSL https://get.opentofu.org/install.sh | bash
           echo "$HOME/.opentofu/bin" >> $GITHUB_PATH
 
-      - name: Make scripts executable
-        run: chmod +x ./*.sh */*.sh
+      - name: Make all .sh scripts executable
+        run: find . -name "*.sh" -exec chmod +x {} \;
 
       - name: Run deployment
         run: ./all-deploy.sh ${{ inputs.action }}
