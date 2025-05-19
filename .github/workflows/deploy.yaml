@@ -1,0 +1,32 @@
+name: Deploy Infrastructure
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Action to perform (apply or destroy)'
+        required: true
+        default: 'apply'
+        type: choice
+        options:
+          - apply
+          - destroy
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Opentofu
+        run: |
+          curl -sSL https://get.opentofu.org/install.sh | bash
+          echo "$HOME/.opentofu/bin" >> $GITHUB_PATH
+
+      - name: Make scripts executable
+        run: chmod +x ./*.sh */*.sh
+
+      - name: Run deployment
+        run: ./all-deploy.sh ${{ inputs.action }}

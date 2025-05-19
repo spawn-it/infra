@@ -17,17 +17,6 @@ module "s3_folder_create" {
   folder_name = "tfstates"
 }
 
-# Create a "users" folder inside the same bucket
-module "s3_user_folders_create" {
-  source = "../modules/common/configs/s3/folder"
-  providers = {
-    minio = minio.s3
-  }
-  depends_on = [module.s3_bucket_create]
-
-  folder_name = "users"
-}
-
 # Create a Keycloak realm using the specified name
 module "idp_create_realm" {
   source = "../modules/common/configs/idp/realm"

@@ -5,7 +5,7 @@ module "docker_instances" {
     for name, inst in var.instances : name => inst
     if inst.provider == "docker"
   }
-  source         = "../../modules/docker/instances"
+  source         = "../modules/docker/instances"
   image          = each.value.image
   container_name = each.value.container_name
   ports          = each.value.ports
@@ -13,5 +13,5 @@ module "docker_instances" {
   command        = each.value.command
   has_volume     = each.value.has_volume
   volume_name    = "volume-${each.value.container_name}"
-  network_name   = "spawn-it-network"
+  network_name   = each.value.network_name
 }

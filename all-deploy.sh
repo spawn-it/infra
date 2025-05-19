@@ -10,27 +10,27 @@ if [[ "$ACTION" == "apply" ]]; then
   echo "==> Deploying volumes..."
   ./volumes-deploy.sh apply
 
+  echo "==> Deploying network..."
+  ./network-deploy.sh apply
+
   echo "==> Deploying instances..."
   ./instances-deploy.sh apply
 
   echo "==> Deploying configs..."
   ./configs-deploy.sh apply
 
-  echo "==> Deploying users..."
-  ./users-deploy.sh apply
-
   echo "Infrastructure successfully deployed."
 
 elif [[ "$ACTION" == "destroy" ]]; then
-
-  echo "==> Destroying users..."
-  ./users-deploy.sh destroy
   
   echo "==> Destroying configs..."
   ./configs-deploy.sh destroy
 
   echo "==> Destroying instances..."
   ./instances-deploy.sh destroy
+
+  echo "==> Destroying network..."
+  ./network-deploy.sh destroy
 
   echo "==> Destroying volumes..."
   ./volumes-deploy.sh destroy

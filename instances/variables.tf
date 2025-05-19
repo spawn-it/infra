@@ -8,6 +8,7 @@ variable "instances" {
     env_vars       = map(string)
     command        = list(string)
     has_volume     = optional(bool, false)
+    network_name   = string
   }))
   default = {
     s3 = {
@@ -22,8 +23,9 @@ variable "instances" {
         "MINIO_ROOT_USER"     = "minioadmin"
         "MINIO_ROOT_PASSWORD" = "minioadmin"
       }
-      command    = ["server", "/data", "--console-address", ":9001"]
-      has_volume = true
+      command      = ["server", "/data", "--console-address", ":9001"]
+      has_volume   = true
+      network_name = "spawn-it-network"
     }
 
     backend = {
@@ -40,7 +42,8 @@ variable "instances" {
         "S3_SECRET_KEY"  = "minioadmin"
         "S3_BUCKET"      = "spawn-it-bucket"
       }
-      command = ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+      command      = ["npm", "run", "start"]
+      network_name = "spawn-it-network"
     },
 
     frontend = {
@@ -57,7 +60,8 @@ variable "instances" {
         "KEYCLOAK_SCOPE"        = "openid profile email"
         "KEYCLOAK_REDIRECT_URI" = "http://localhost:3000/callback"
       }
-      command = []
+      command      = ["npm", "run", "start"]
+      network_name = "spawn-it-network"
     },
 
     keycloak = {
@@ -71,7 +75,8 @@ variable "instances" {
         "KEYCLOAK_ADMIN"          = "admin"
         "KEYCLOAK_ADMIN_PASSWORD" = "admin"
       }
-      command = ["start-dev"]
+      command      = ["start-dev"]
+      network_name = "spawn-it-network"
     }
   }
 }

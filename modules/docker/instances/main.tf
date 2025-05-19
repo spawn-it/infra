@@ -13,25 +13,14 @@ resource "docker_image" "instance" {
   keep_locally = false # Do not retain the image locally after container removal
 }
 
-# Check if the specified Docker volume exists before container creation
-resource "null_resource" "check_volume_exists" {
-  # Only run if a volume is required
-  count = var.has_volume ? 1 : 0
-
-  provisioner "local-exec" {
-    command = "docker volume inspect ${var.volume_name} > /dev/null 2>&1 || (echo \"Docker volume '${var.volume_name}' does not exist\" && exit 1)"
-  }
-}
-
 # Look up an existing Docker network
 data "docker_network" "custom_network" {
-  name = "spawn-it-net"
+  name = var.network_name
 }
+
 
 # Create the Docker container
 resource "docker_container" "instance" {
-  depends_on = [null_resource.check_volume_exists] # Explicit dependency on volume check
-
   name    = var.container_name
   image   = docker_image.instance.image_id
   env     = [for k, v in var.env_vars : "${k}=${v}"]
@@ -57,9 +46,11 @@ resource "docker_container" "instance" {
   }
 
   # Attach container to the specified Docker network
+  # Note: The network will not disappear if the container is removed
   networks_advanced {
     name = data.docker_network.custom_network.name
   }
+
 
   lifecycle {
     # Prevent unnecessary container recreation due to minor diffs
