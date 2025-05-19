@@ -1,0 +1,15 @@
+repos:
+  - repo: https://github.com/opentofu/tofu
+    rev: v1.9.1
+    hooks:
+      - id: tofu-fmt
+        name: "tofu fmt"
+        entry: tofu fmt -recursive
+        language: system
+        types: [terraform]
+
+  - repo: https://github.com/terraform-docs/terraform-docs
+    rev: v0.17.0
+    hooks:
+      - id: terraform-docs-markdown
+        args: ["--output-mode", "inject", "--output-file", "README.md"]
