@@ -40,3 +40,21 @@ module "idp_create_users" {
   realm_id = module.idp_create_realm.realm_id
   user     = var.default_users[count.index]
 }
+
+module "s3_create_client_folder" {
+  source = "../modules/common/configs/s3/folder"
+  providers = {
+    minio = minio.s3
+  }
+  depends_on = [module.s3_bucket_create]
+
+  count       = length(var.default_users)
+  folder_name = "tfstates/${module.idp_create_users[count.index].user_id}"
+}
+
+module "idp_create_client" {
+  source = "../modules/common/configs/idp/client"
+  providers = {
+    keycloak = keycloak.keycloak
+  }
+}
