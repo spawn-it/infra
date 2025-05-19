@@ -22,8 +22,11 @@ jobs:
 
       - name: Install Opentofu
         run: |
-          curl -sSL https://get.opentofu.org/install.sh | bash
+          curl --proto '=https' --tlsv1.2 -fsSL https://get.opentofu.org/install-opentofu.sh -o install-opentofu.sh
+          chmod +x install-opentofu.sh
+          ./install-opentofu.sh --install-method standalone
           echo "$HOME/.opentofu/bin" >> $GITHUB_PATH
+          rm -f install-opentofu.sh
 
       - name: Make all .sh scripts executable
         run: find . -name "*.sh" -exec chmod +x {} \;
