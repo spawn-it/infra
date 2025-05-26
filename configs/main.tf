@@ -57,4 +57,5 @@ module "idp_create_client" {
   providers = {
     keycloak = keycloak.keycloak
   }
+  realm_id = module.idp_create_realm.realm_id
 }
