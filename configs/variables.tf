@@ -23,9 +23,9 @@ variable "s3_access_key" {
 }
 
 variable "s3_secret_key" {
+  description = "The secret key for the S3 service"
   type        = string
   default     = "minioadmin"
-  description = "The secret key for the S3 service"
 }
 
 variable "admin_user" {
