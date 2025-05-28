@@ -7,10 +7,9 @@ terraform {
   }
 }
 
-resource "minio_s3_object" "object_creation_file" {
-  provider     = minio.s3
-  bucket       = var.s3_bucket
-  key          = var.file
+resource "minio_s3_object" "object_creation_filo" {
+  bucket_name  = var.s3_bucket
+  object_name  = var.file
   source       = var.file_path
   content_type = var.content_type
 }
