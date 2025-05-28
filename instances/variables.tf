@@ -36,8 +36,9 @@ variable "instances" {
         "8000" = "8000"
       }
       env_vars = {
-        "S3_URL"         = "http://localhost:9000"
-        "S3_CONSOLE_URL" = "http://localhost:9001"
+        "S3_URL"         = "http://spawn-it-s3:9000"
+        "S3_CONSOLE_URL" = "http://spawn-it-s3:9001"
+        "S3_REGION"      = "us-east-1"
         "S3_ACCESS_KEY"  = "minioadmin"
         "S3_SECRET_KEY"  = "minioadmin"
         "S3_BUCKET"      = "spawn-it-bucket"
