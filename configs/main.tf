@@ -52,6 +52,22 @@ module "s3_create_client_folder" {
   folder_name = "tfstates/${module.idp_create_users[count.index].user_id}"
 }
 
+module "s3_upload_templates" {
+  source = "../modules/common/configs/s3/file"
+  providers = {
+    minio = minio.s3
+  }
+  depends_on = [module.s3_bucket_create]
+
+  for_each = toset(var.template_files)
+
+  s3_bucket    = var.s3_bucket
+  file     = "templates/${each.value}"
+  file_path    = "${path.module}/templates/${each.value}"
+  content_type = "application/json"
+}
+
+
 module "idp_create_client" {
   source = "../modules/common/configs/idp/client"
   providers = {

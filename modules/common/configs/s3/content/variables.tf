@@ -8,8 +8,8 @@ variable "s3_bucket" {
   type        = string
 }
 
-variable "file_path" {
-  description = "Path to the file to upload to S3"
+variable "content" {
+  description = "Content of the file to create in S3"
   type        = string
 }
 
