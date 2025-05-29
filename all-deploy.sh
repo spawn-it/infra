@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ACTION=${1:-apply}
-DELAY=10
+DELAY=20
 
 echo "Running all deployment steps with action: $ACTION"
 

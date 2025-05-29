@@ -14,7 +14,7 @@ module "s3_folder_create" {
   }
   depends_on = [module.s3_bucket_create]
 
-  folder_name = "tfstates"
+  folder_name = "clients"
 }
 
 # Create a Keycloak realm using the specified name
@@ -49,7 +49,7 @@ module "s3_create_client_folder" {
   depends_on = [module.s3_bucket_create]
 
   count       = length(var.default_users)
-  folder_name = "tfstates/${module.idp_create_users[count.index].user_id}"
+  folder_name = "clients/${module.idp_create_users[count.index].user_id}"
 }
 
 # Upload templates to the S3 bucket
