@@ -41,3 +41,9 @@ variable "network_name" {
   type        = string
   description = "The Docker network that must exist"
 }
+
+variable "acces_to_docker" {
+  description = "Flag to indicate if the container has access to the Docker socket"
+  type        = bool
+  default     = false
+}
