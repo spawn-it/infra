@@ -14,4 +14,5 @@ module "docker_instances" {
   has_volume     = each.value.has_volume
   volume_name    = "volume-${each.value.container_name}"
   network_name   = each.value.network_name
+  acces_to_docker = each.value.acces_to_docker
 }

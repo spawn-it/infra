@@ -45,6 +45,16 @@ resource "docker_container" "instance" {
     }
   }
 
+  dynamic "mounts" {
+    for_each = var.acces_to_docker ? [1] : []
+    content {
+      target    = "/var/run/docker.sock"
+      source    = "/var/run/docker.sock"
+      type      = "bind"
+      read_only = false
+    }
+  }
+
   # Attach container to the specified Docker network
   # Note: The network will not disappear if the container is removed
   networks_advanced {

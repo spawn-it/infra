@@ -9,6 +9,7 @@ variable "instances" {
     command        = list(string)
     has_volume     = optional(bool, false)
     network_name   = string
+    acces_to_docker = optional(bool, false)
   }))
   default = {
     s3 = {
@@ -45,6 +46,7 @@ variable "instances" {
       }
       command      = ["npm", "run", "start"]
       network_name = "spawn-it-network"
+      acces_to_docker = true
     },
 
     frontend = {
