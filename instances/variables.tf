@@ -61,9 +61,6 @@ variable "instances" {
         "S3_ACCESS_KEY"  = "minioadmin"
         "S3_SECRET_KEY"  = "minioadmin"
         "S3_BUCKET"      = "spawn-it-bucket"
-        "AWS_ACCESS_KEY_ID"     = var.host_aws_access_key_id
-        "AWS_SECRET_ACCESS_KEY" = var.host_aws_secret_access_key
-        "AWS_DEFAULT_REGION"    = var.host_aws_default_region
       }
       command      = ["npm", "run", "start"]
       network_name = "spawn-it-network"

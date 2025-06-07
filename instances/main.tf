@@ -1,8 +1,27 @@
 # Module used to dispatch docker instances to the module in charge of creating the docker instances
+
+locals {
+  processed_instances = {
+    for name, inst_config in var.instances : name => merge(
+      inst_config,
+      name == "backend" ? {
+        env_vars = merge(
+          inst_config.env_vars,
+          {
+            "AWS_ACCESS_KEY_ID"     = var.host_aws_access_key_id
+            "AWS_SECRET_ACCESS_KEY" = var.host_aws_secret_access_key
+            "AWS_DEFAULT_REGION"    = var.host_aws_default_region
+          }
+        )
+      } : {}
+    )
+  }
+}
+
 module "docker_instances" {
   # We check his provider to know if we need to use the docker module
   for_each = {
-    for name, inst in var.instances : name => inst
+    for name, inst in local.processed_instances : name => inst
     if inst.provider == "docker"
   }
   source         = "../modules/docker/instances"
