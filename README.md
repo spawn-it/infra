@@ -12,13 +12,9 @@ Le projet utilise les bénéfices d’une IaC intégrée dans une interface simp
 
 
 
-## 2. **Contexte et Choix Technologiques**
-
-### 2.1 Le paradigme déclaratif
+## 2. Contexte
 
 Le déploiement d’infrastructure a longtemps reposé sur des approches impératives, où chaque étape est explicitement codée. Ce type de logique, est difficile à maintenir à grande échelle, car chaque détail de l’exécution doit être anticipé et géré. Le paradigme déclaratif repose sur une l'idée de décrire l’état final souhaité, et laisser à un moteur spécialisé le soin de converger vers cet état. Cette approche permet de garantir l'idempotence, car exécuter plusieurs fois la même configuration n’a pas d’effet secondaire.
-
-### 2.2 Pourquoi OpenTofu ?
 
 Nous avons retenu OpenTofu, un moteur d’infrastructure open-source issu du projet Terraform. Contrairement à Terraform, OpenTofu conserve une licence ouverte et bénéficie du soutien de la Linux Foundation. OpenTofu permet de décrire des infrastructures sous forme de fichiers `.tf` et de piloter leur mise en place avec des commandes simples (`init`, `plan`, `apply`, `destroy`). Il s’intègre facilement avec :
 
@@ -26,7 +22,7 @@ Nous avons retenu OpenTofu, un moteur d’infrastructure open-source issu du pro
 - des providers **AWS** (pour déployer sur le cloud),
 - et des backends **S3** (pour stocker l’état de l’infrastructure).
 
-### 2.3 Notre Stack
+### 3. Choix Technologiques
 
 **Infrastructure as Code (IaC) & Orchestration :**
 
@@ -53,7 +49,7 @@ Nous avons retenu OpenTofu, un moteur d’infrastructure open-source issu du pro
 
 - Docker : Utilisé pour conteneuriser les composants de l'infrastructure de base de SpawnIt (MinIO, Keycloak, frontend, backend) en local, mais aussi pour déployer les services par les utilisateurs que ce soit localement ou sur des instances cloud.
 
-## 3. Architecture
+## 4. Architecture
 
 L’architecture repose sur un découplage entre la présentation, la logique d’orchestration, et l’infrastructure cible. Elle est conçue de manière modulaire et stateless, avec une exécution conteneurisée, un backend unique pilotant OpenTofu, et un stockage persistant via S3. Le backend agit comme point de convergence, en orchestrant toutes les interactions entre les autres composants.
 
@@ -89,7 +85,7 @@ templates/
   └── *.template.tfvars.json
 ```
 
-## 4. Déploiement
+## 5. Déploiement
 
 Le déploiement de l’application repose sur des scripts shell qui encapsulent chacun une étape du provisioning. Ces scripts n’exécutent pas des commandes Docker, mais appellent systématiquement OpenTofu avec les fichiers de configuration appropriés. Chaque brique de l’application (volumes, réseau, conteneurs, configuration) est décrite de façon déclarative, dans des modules Terraform versionnés localement.
 
@@ -108,11 +104,11 @@ C’est là l’un des aspects les plus intéressants de cette architecture : le
 
 
 
-## 5. Workflow
+## 6. Workflow
 
 SpawnIt utilise un enchaînement d’étapes gérées par le backend, avec une séparation entre les phases de génération de configuration, de provisioning, et de supervision. L’ensemble du système est gérée via une API ou chaque endpoint déclenche des actions Terraform en local, sur la base de fichiers centralisés dans S3.
 
-### 5.1 Génération de configuration et persistance dans S3
+**Génération de configuration et persistance dans S3**
 
 Tous les services deployables sont basés sur des templates JSON prééxistants. Lorsqu’un utilisateur choisit un service à déployer et renseigne ses paramètres dans l’interface, ces informations sont envoyées au backend. Le backend les encapsule dans une structure standardisée conforme au schéma d’entrée des modules Terraform. Il ajoute dynamiquement des valeurs et sérialise l’ensemble dans un fichier `terraform.tfvars.json`. Ce fichier est ensuite stocké sur S3.
 
@@ -120,7 +116,7 @@ Cette étape ne déclenche aucun déploiement. Elle sert uniquement à constitue
 
 <img src="C:\Users\timot\Documents\HEIG\PLM\infra\doc\img\config.png" style="zoom:50%;" />
 
-### 5.2 Préparation du répertoire de travail
+**Préparation du répertoire de travail**
 
 Pour chaque opération Terraform (`plan`, `apply`, `destroy`), le backend crée à la volée un répertoire de travail sous `./workdirs/{clientId}/{serviceId}/`. Il y télécharge depuis S3 tous les fichiers associés (variables et état). La logique d’initialisation est encapsulée dans une instance `OpenTofuCommand`, qui passe le contexte `(clientId, serviceId)`.
 
@@ -128,7 +124,7 @@ Avant chaque exécution, cette instance appelle `tofu init` avec les bons param�
 
 <img src="C:\Users\timot\Documents\HEIG\PLM\infra\doc\img\workdir.png" style="zoom:50%;" />
 
-### 5.3 Validation, planification, application et destruction
+**Validation, planification, application et destruction**
 
 Avant de lancer un plan sur un service, le backend vérifie que la couche réseau associée est existante et conforme. Il le fait en lançant un plan sur le module réseau du provider spécifié (`network/local` ou `network/aws`) avec son propre fichier de variables. Si le plan indique une divergence, ou si le fichier de configuration est manquant, l’opération principale est bloquée. Cette validation réseau est déduite dynamiquement à partir des paramètres du service (`provider` et `network_name`), ce qui permet à deux services d’un même client de partager une même couche réseau tout en étant déployés indépendamment.
 
@@ -140,7 +136,7 @@ La destruction (`tofu destroy`) suit le même schéma et est toujours précédé
 
 <img src="C:\Users\timot\Documents\HEIG\PLM\infra\doc\img\plan.png" style="zoom:50%;" />
 
-### 5.5 Supervision et gestion des jobs
+**Supervision et gestion des jobs**
 
 SpawnIt utilise une boucle de planification continue sur tous les services. Un `setInterval` exécute toutes les 10 secondes un `plan` sur le service ciblé. Le résultat est envoyé aux clients connectés. Cette fonctionnalité est utile pour détecter des dérives manuelles (modifications de conteneurs ou d’instances en dehors de SpawnIt), sans avoir besoin d’un agent sur la machine cible.
 
@@ -148,13 +144,15 @@ Chaque exécution de `apply`, `destroy` ou `plan` est associée à un UUID et co
 
 
 
-## 6. Discussion et limites
+## 7. Discussion et limites
 
 Notre architecture modulaire permet à chaque composant, que ce soit le backend, les modules Terraform, ou les scripts de déploiement d'être facilement réutilisables et extensibles. Le modèle de configuration utilisant les templates et les variables rend l’extension du catalogue de services extrêmement simple. L’ajout d’un nouveau service ne nécessite aucune modification du backend ni du frontend : il suffit de déposer un nouveau fichier template et de l’enregistrer dans le fichier `catalog.json`. Le fait que l'application soit auto-déployable est une preuve de cohérence. Cette boucle fermée illustre bien l’intention initiale du projet de tirer parti de l'interface déclarative pour la gestion d’infrastructure.
 
 Certaines limitations subsistent. La persistance de l’état repose sur le backend S3. Si ce dernier devient indisponible, l’application devient inutilisable, car le backend ne conserve aucun cache local. Ce choix est volontaire (stateless complet), mais introduit une dépendance forte à la disponibilité de S3. Enfin, l’expérience utilisateur peut être altérée en cas d’erreurs de configuration. L’application ne valide pas de manière exhaustive les champs du formulaire utilisateur, ce qui peut provoquer des erreurs à l’exécution de Terraform difficiles à diagnostiquer pour un utilisateur non technique. Ce point pourrait être amélioré par une phase de pré-validation plus stricte côté backend.
 
-### 7. **Conclusion**
+
+
+## 8. **Conclusion**
 
 Notre projet démontre qu’il est possible de proposer une interface de déploiement légère et déclarative, sans sacrifier la flexibilité ni l’extensibilité. L’approche déclarative a joué un grand rôle dans la structuration du projet. En isolant chaque étape du déploiement et en les décrivant comme des modules indépendants, l’architecture reste lisible, reproductible et facilement testable. Cette structure a également facilité la mise en place de l’auto-hébergement, qui démontre la cohérence du modèle choisi.
 
