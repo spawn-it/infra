@@ -1,3 +1,7 @@
+# Projet SpawnIt
+
+**Auteurs : ** Massimo Stefani et Timothée Van Hove
+
 ## 1. **Introduction**
 
 Le projet SpawnIt propose une plateforme web permettant de déployer des services complets en un clic, qu’ils soient exécutés localement (via Docker) ou dans le cloud (via AWS EC2). Pour répondre à cette ambition, nous avons fait le choix d’une approche déclarative, en nous appuyant sur OpenTofu, un moteur d’orchestration d’infrastructure issu de Terraform. Cette approche repose sur le principe : *"décrire ce que l’on souhaite obtenir, plutôt que comment y parvenir."*
@@ -49,7 +53,7 @@ Nous avons retenu OpenTofu, un moteur d’infrastructure open-source issu du pro
 
 - Docker : Utilisé pour conteneuriser les composants de l'infrastructure de base de SpawnIt (MinIO, Keycloak, frontend, backend) en local, mais aussi pour déployer les services par les utilisateurs que ce soit localement ou sur des instances cloud.
 
-## Architecture
+## 3. Architecture
 
 L’architecture repose sur un découplage entre la présentation, la logique d’orchestration, et l’infrastructure cible. Elle est conçue de manière modulaire et stateless, avec une exécution conteneurisée, un backend unique pilotant OpenTofu, et un stockage persistant via S3. Le backend agit comme point de convergence, en orchestrant toutes les interactions entre les autres composants.
 
@@ -144,24 +148,16 @@ Chaque exécution de `apply`, `destroy` ou `plan` est associée à un UUID et co
 
 
 
-### 6. **Discussion et Limites**
+## 6. Discussion et limites
 
-- Ce qui marche bien :
-  - Modularité poussée
-  - Extension facile du catalogue
-  - Auto-hébergement = démonstration technique
-- Limites :
-  - Pas encore d’authentification multi-utilisateur
-  - Pas de persistance hors S3
-  - Sensible aux erreurs de config
+Notre architecture modulaire permet à chaque composant, que ce soit le backend, les modules Terraform, ou les scripts de déploiement d'être facilement réutilisables et extensibles. Le modèle de configuration utilisant les templates et les variables rend l’extension du catalogue de services extrêmement simple. L’ajout d’un nouveau service ne nécessite aucune modification du backend ni du frontend : il suffit de déposer un nouveau fichier template et de l’enregistrer dans le fichier `catalog.json`. Le fait que l'application soit auto-déployable est une preuve de cohérence. Cette boucle fermée illustre bien l’intention initiale du projet de tirer parti de l'interface déclarative pour la gestion d’infrastructure.
 
-
+Certaines limitations subsistent. La persistance de l’état repose sur le backend S3. Si ce dernier devient indisponible, l’application devient inutilisable, car le backend ne conserve aucun cache local. Ce choix est volontaire (stateless complet), mais introduit une dépendance forte à la disponibilité de S3. Enfin, l’expérience utilisateur peut être altérée en cas d’erreurs de configuration. L’application ne valide pas de manière exhaustive les champs du formulaire utilisateur, ce qui peut provoquer des erreurs à l’exécution de Terraform difficiles à diagnostiquer pour un utilisateur non technique. Ce point pourrait être amélioré par une phase de pré-validation plus stricte côté backend.
 
 ### 7. **Conclusion**
 
-- Bilan du projet
-- Ce que le paradigme déclaratif a permis de réaliser
-- Ouvertures possibles :
-  - Ajouter des providers (Kubernetes ? Azure ?)
-  - Générer dynamiquement les templates
-  - Ajout de monitoring post-déploiement
+Notre projet démontre qu’il est possible de proposer une interface de déploiement légère et déclarative, sans sacrifier la flexibilité ni l’extensibilité. L’approche déclarative a joué un grand rôle dans la structuration du projet. En isolant chaque étape du déploiement et en les décrivant comme des modules indépendants, l’architecture reste lisible, reproductible et facilement testable. Cette structure a également facilité la mise en place de l’auto-hébergement, qui démontre la cohérence du modèle choisi.
+
+Plusieurs perspectives d’évolution sont identifiées. Il serait pertinent d’ajouter le support d’autres providers, tels que Kubernetes, Azure ou GCP, afin d’ouvrir SpawnIt à de nouveaux environnements.  Enfin, l’ajout d’un système de monitoring post-déploiement  même simple permettrait d’offrir un retour d’état en temps réel sans avoir à s’appuyer uniquement sur les plans Terraform.
+
+SpawnIt est donc à la fois une interface de déploiement, une démonstration de l’intérêt du paradigme déclaratif, et une base solide pour expérimenter ou industrialiser des workflows d’orchestration d’infrastructure modernes.
