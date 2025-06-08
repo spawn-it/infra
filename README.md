@@ -69,29 +69,37 @@ Enfin, le backend conserve une table mémoire des jobs en cours, identifiés par
 
 Le système est donc entièrement modulaire (chaque service, chaque client, chaque couche réseau est isolée), entièrement déclaratif (toutes les actions passent par un fichier `*.tfvars.json` et un appel OpenTofu), et entièrement pilotable via un backend minimaliste et stateless. Cette architecture permet de reproduire des environnements complexes avec peu de dépendances techniques.
 
-## 4. Workflow
+## 4. Déploiement
+
+![](doc/img/deploy.png)
+
+
+
+
+
+## 5. Workflow
 
 Le fonctionnement de SpawnIt utilise un enchaînement d’étapes gérées par le backend, avec une séparation entre les phases de génération de configuration, de provisioning, et de supervision. L’ensemble du système est gérée via une API ou chaque endpoint déclenche des actions Terraform en local, sur la base de fichiers centralisés dans S3.
 
-### 4.1 Génération de configuration et persistance dans S3
+### 5.1 Génération de configuration et persistance dans S3
 
 Tous les services deployables sont basés sur des templates JSON prééxistants. Lorsqu’un utilisateur choisit un service à déployer et renseigne ses paramètres dans l’interface, ces informations sont envoyées au backend. Le backend les encapsule dans une structure standardisée conforme au schéma d’entrée des modules Terraform. Il ajoute dynamiquement des valeurs et sérialise l’ensemble dans un fichier `terraform.tfvars.json`. Ce fichier est ensuite stocké sur S3 dans un chemin déterministe de la forme `clients/{clientId}/{serviceId}/terraform.tfvars.json`.
 
 Cette étape ne déclenche aucun déploiement. Elle sert uniquement à constituer une base déclarative persistée, qui pourra ensuite être appliquée ou modifiée. Le backend ne conserve aucun état local. Toutes les informations sont reconstruites à partir des fichiers distants, ce qui permet de redémarrer le backend à tout moment sans perte d’état.
 
-### 4.2 Préparation du répertoire de travail
+### 5.2 Préparation du répertoire de travail
 
 Pour chaque opération Terraform (`plan`, `apply`, `destroy`), le backend crée à la volée un répertoire de travail sous `./workdirs/{clientId}/{serviceId}/`. Il y télécharge depuis S3 tous les fichiers associés (variables et état). La logique d’initialisation est encapsulée dans une instance `OpenTofuCommand`, qui passe le contexte `(clientId, serviceId)`.
 
 Avant chaque exécution, cette instance appelle `tofu init` avec les bons paramètres backend (bucket, chemin du fichier d’état, région, endpoint MinIO ou AWS, etc.), en injectant ces informations via des variables d’environnement. Cette initialisation est faite à froid pour chaque exécution, sauf si elle a déjà été faite dans le contexte courant. Elle est donc idempotente, mais évite les recharges inutiles.
 
-### 4.3 Validation du réseau
+### 5.3 Validation du réseau
 
 Avant de lancer un plan sur un service, le backend vérifie que la couche réseau associée est existante et conforme. Il le fait en lançant un plan sur le module réseau du provider spécifié (`network/local` ou `network/aws`) avec son propre fichier de variables. Si le plan indique une divergence, ou si le fichier de configuration est manquant, l’opération principale est bloquée.
 
 Cette validation réseau est déduite dynamiquement à partir des paramètres du service (`provider` et `network_name`), ce qui permet à deux services d’un même client de partager une même couche réseau tout en étant déployés indépendamment.
 
-### 4.4 Planification, application et destruction
+### 5.4 Planification, application et destruction
 
 Une fois le répertoire de travail prêt et le réseau validé, le backend lance la commande `tofu plan`. La sortie de cette commande est capturée en flux et transmise au client via SSE. Le backend analyse également cette sortie pour en déduire un statut formel : "compliant" (aucune modification à prévoir), "drifted" (modifications planifiées), ou "error" (exécution échouée).
 
@@ -99,17 +107,17 @@ Si l’utilisateur confirme le plan, la commande `tofu apply` est déclenchée. 
 
 La destruction (`tofu destroy`) suit le même schéma et est toujours précédée d’un plan implicite pour vérifier l’état du service à supprimer. Le backend ne fait pas de nettoyage automatique des répertoires de travail, mais ceux-ci peuvent être supprimés sans conséquence, puisque l’état est toujours sauvegardé dans S3.
 
-### 4.5 Supervision continue
+### 5.5 Supervision continue
 
 SpawnIt utilise une boucle de planification continue sur tous les services. Un `setInterval` exécute toutes les 10 secondes un `plan` sur le service ciblé. Le résultat est envoyé aux clients connectés. Cette fonctionnalité est utile pour détecter des dérives manuelles (modifications de conteneurs ou d’instances en dehors de SpawnIt), sans avoir besoin d’un agent sur la machine cible.
 
-### 4.6 Annulation et gestion des jobs
+### 5.6 Annulation et gestion des jobs
 
 Chaque exécution de `apply`, `destroy` ou `plan` est associée à un UUID et conservée dans une table en mémoire. Cela permet à l’utilisateur d’annuler un job en cours via une requête dédiée, ce qui envoie un `SIGTERM` au processus sous-jacent. En cas de plantage du backend, cette table est perdue, mais comme les processus sont exécutés localement et encapsulés, les effets secondaires sont limités. Les jobs terminés sont automatiquement retirés de la table.
 
 
 
-### 5. **Discussion et Limites**
+### 6. **Discussion et Limites**
 
 - Ce qui marche bien :
   - Modularité poussée
@@ -122,7 +130,7 @@ Chaque exécution de `apply`, `destroy` ou `plan` est associée à un UUID et co
 
 
 
-### 6. **Conclusion**
+### 7. **Conclusion**
 
 - Bilan du projet
 - Ce que le paradigme déclaratif a permis de réaliser
