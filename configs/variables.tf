@@ -131,7 +131,7 @@ variable "template_files" {
     "minecraft.template.tfvars.json",
     "minio.template.tfvars.json",
     "nginx.template.tfvars.json",
-    "postgres.template.tfvars.json",
+    "postgresql.template.tfvars.json",
     "quakejs.template.tfvars.json",
     "rust.template.tfvars.json",
     "sonarqube.template.tfvars.json",
