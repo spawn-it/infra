@@ -62,7 +62,7 @@ L’architecture repose sur un découplage entre la présentation, la logique d�
 | `spawnit-backend`  | `ghcr.io/spawnit/backend`      | N/A                 |
 | `spawnit-frontend` | `ghcr.io/spawnit/frontend`     | N/A                 |
 | `minio`            | `minio/minio:latest`           | `minio-data`        |
-| `keycloak`         | `quay.io/keycloak/keycloak:24` | `keycloak-data`     |
+| `keycloak`         | `quay.io/keycloak/keycloak:24` | N/A                 |
 
 
 **Backend**
