@@ -4,14 +4,4 @@ variable "volumes" {
     provider   = string
     volume_for = string
   }))
-  default = [
-    {
-      provider   = "docker"
-      volume_for = "spawn-it-s3"
-    },
-    {
-      provider   = "docker"
-      volume_for = "spawn-it-authentik-db"
-    }
-  ]
 }

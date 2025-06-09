@@ -4,10 +4,4 @@ variable "networks" {
     provider     = string
     network_name = string
   }))
-  default = [
-    {
-      provider     = "docker"
-      network_name = "spawn-it-network"
-    }
-  ]
 }

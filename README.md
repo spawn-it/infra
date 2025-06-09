@@ -1,107 +1,148 @@
 # Projet SpawnIt
 
-**Auteurs : ** Massimo Stefani et Timothée Van Hove
+**Auteurs :** Massimo Stefani et Timothée Van Hove
 
-## 1. **Introduction**
+> [!IMPORTANT]
+> Ce projet est un *proof‑of‑concept* pédagogique réalisé dans le cadre d’un cours. 
+> Il est **fortement déconseillé de l’utiliser en production**: aucune mesure de sécurité robuste n’a été implémentée (mots de passe stockés en clair, absence de protocoles de chiffrement ou d’authentification renforcée, etc.). 
+> Utilisez‑le exclusivement à des fins d’apprentissage et d’expérimentation.
 
-Le projet SpawnIt propose une plateforme web permettant de déployer des services complets en un clic, qu’ils soient exécutés localement (via Docker) ou dans le cloud (via AWS EC2). Pour répondre à cette ambition, nous avons fait le choix d’une approche déclarative, en nous appuyant sur OpenTofu, un moteur d’orchestration d’infrastructure issu de Terraform. Cette approche repose sur le principe : *"décrire ce que l’on souhaite obtenir, plutôt que comment y parvenir."*
+## 1. Introduction
 
-SpawnIt permet à l’utilisateur de choisir un service (base de données, serveur de jeu, plateforme DevOps, etc.), de personnaliser sa configuration, puis de déclencher son déploiement. En arrière-plan, l’application génère automatiquement les fichiers de configuration nécessaires, les stocke dans un système de fichiers objet (S3), et exécute les commandes OpenTofu pour créer ou détruire l’infrastructure demandée.
+SpawnIt est une application **«Infrastructure‑as‑Code pour tous»** qui s’appuie intégralement sur le moteur d’orchestration **OpenTofu** (fork communautaire de Terraform). Son objectif: rendre le déploiement et la destruction de services techniques aussi simples qu’un clic, tout en conservant la puissance d’une description déclarative.
 
-Le projet utilise les bénéfices d’une IaC intégrée dans une interface simple, avec l'objectif de rendre le déploiement de services accessible et rapide. Nous avons poussé l'idée encore plus loin, car le projet peut se déployer lui-même, ce qui montre une forme d’auto-hébergement rendue possible grâce à sa propre architecture déclarative.
+> *Décrire l’état voulu plutôt que la procédure pour y parvenir.*
 
-
+Cette application permet de provisionner des services complets (bases de données, serveurs de jeu, plateformes DevOps, etc.) très facilement, qu'ils soient exécutés localement via Docker ou dans le cloud via AWS EC2.
 
 ## 2. Contexte
 
-Le déploiement d’infrastructure a longtemps reposé sur des approches impératives, où chaque étape est explicitement codée. Ce type de logique, est difficile à maintenir à grande échelle, car chaque détail de l’exécution doit être anticipé et géré. Le paradigme déclaratif repose sur une l'idée de décrire l’état final souhaité, et laisser à un moteur spécialisé le soin de converger vers cet état. Cette approche permet de garantir l'idempotence, car exécuter plusieurs fois la même configuration n’a pas d’effet secondaire.
+Nous avons retenu OpenTofu, un moteur d’infrastructure open‑source issu du projet Terraform. Contrairement à Terraform, OpenTofu conserve une licence ouverte et bénéficie du soutien de la Linux Foundation. OpenTofu permet de décrire des infrastructures sous forme de fichiers `.tf` et de piloter leur mise en place avec des commandes simples (`init`, `plan`, `apply`, `destroy`).
 
-Nous avons retenu OpenTofu, un moteur d’infrastructure open-source issu du projet Terraform. Contrairement à Terraform, OpenTofu conserve une licence ouverte et bénéficie du soutien de la Linux Foundation. OpenTofu permet de décrire des infrastructures sous forme de fichiers `.tf` et de piloter leur mise en place avec des commandes simples (`init`, `plan`, `apply`, `destroy`). Il s’intègre facilement avec :
+Note: Il se peut que vous rencontriez des références à Terraform dans le code ou la documentation.
 
-- des providers **Docker** (pour déployer localement),
-- des providers **AWS** (pour déployer sur le cloud),
-- et des backends **S3** (pour stocker l’état de l’infrastructure).
+### Application auto‑déployée et double approche IaC / API‑First
 
-### 3. Choix Technologiques
+SpawnIt n’est pas seulement un orchestrateur d’infrastructure: **il se déploie lui‑même à l’aide d’OpenTofu**. Nous exploitons deux voies complémentaires qui illustrent la flexibilité du projet:
 
-**Infrastructure as Code (IaC) & Orchestration :**
+1. **IaC traditionnelle – scripts OpenTofu**: toute l’infrastructure d’hébergement de SpawnIt (réseau, volumes persistants, conteneurs système, etc.) est décrite dans des modules OpenTofu conservés dans notre dépôt Git (versionnés via tags Git). Des scripts shell (`all-deploy.sh`, `network-deploy.sh`, …) appellent successivement les commandes Opentofu pour créer ou mettre à jour cet environnement.
+2. **API‑First – infrastructure «as‑a‑Service»**: côté utilisateur, aucune ligne de code Terraform n’est exposée. Une requête HTTP décrivant un service est convertie à la volée en fichiers `.tf`, puis exécutée par OpenTofu. Nous avons cherché à répliquer à notre échelle ce que fait AWS avec CloudFormation: décrire une pile, l’appliquer, et obtenir un service prêt à l’emploi sans manipuler directement la couche IaC. On demande une base de données ou un cluster de jeu et, quelques secondes plus tard, le service est opérationnel.
 
-- OpenTofu : utilisé pour la définition déclarative et le provisionnement de l'infrastructure des services.
-- Provider AWS pour OpenTofu : Permet la création et la gestion d'instances EC2, de Security Groups.
-- Provider Docker pour OpenTofu : Permet la gestion des conteneurs, réseaux et volumes Docker
+Ce document décrit **les deux aspects complémentaires** de SpawnIt: d’une part l’architecture de l’infrastructure déployée avec OpenTofu (conteneurs, modules, scripts), et d’autre part la logique métier (API, orchestrateur, interface utilisateur) qui permet à SpawnIt de proposer une expérience « as-a-Service ».
 
-**Backend & API :**
+La suite est divisée en deux sections claires: d’abord l’infrastructure (présentée ici), puis la couche métier (plus bas dans ce même document).
 
-- Node.js avec Express.js : Express.js est utilisé pour la gestion des routes, des middlewares et des requêtes HTTP.
-- Server-Sent Events (SSE) : fournit un retour au client web pendant les opérations OpenTofu (planification, application).
+## 3. Prérequis
 
-**Stockage des Configurations & Données :**
+SpawnIt nécessite seulement deux outils installés localement:
 
-- Amazon S3 (ou compatible, ex: MinIO) : Utilisé comme datastore principal pour les états OpenTofu des différentes infrastructures déployées (via la configuration du backend S3 d'OpenTofu). Aussi utilisé pour les configurations de service spécifiques à chaque client et les templates de service de base qui sont servis au frontend.
+* **Docker**: Testé avec la version>=28.0.0, mais toute version récente devrait convenir.
+* **OpenTofu CLI**: Testé avec la version>=1.9.
 
-**Frontend :**
+## 4. Infrastructure - IaC traditionnelle
 
-- Next.js (React) : Choisi pour ses capacités de rendu côté serveur, et son écosystème React.
-- Material UI : Utilisée comme librairie de composants UI.
-- Keycloak : Intégré pour la gestion de l'authentification et de l'autorisation des utilisateurs.
+### 1. Choix Technologiques
+Sans providers, un code OpenTofu ne peut rien faire. Nous avons choisi d’utiliser les providers suivants pour répondre à nos besoins :
 
-**Conteneurisation & Déploiement :**
+- Un provider **Docker** pour déployer localement des services dans des conteneurs.
+- Un provider **Keycloak** pour deployer un serveur d'authentification et de gestion des utilisateurs.
+- Un provider **MinIO** pour déployer un server de stockage compatible S3, qui servira utilisé comme datastore principal pour les états OpenTofu des différentes infrastructures déployées (via la configuration du backend S3 d'OpenTofu). Aussi utilisé pour les configurations de service spécifiques à chaque client et les templates de service de base qui sont servis au frontend.
 
-- Docker : Utilisé pour conteneuriser les composants de l'infrastructure de base de SpawnIt (MinIO, Keycloak, frontend, backend) en local, mais aussi pour déployer les services par les utilisateurs que ce soit localement ou sur des instances cloud.
+> [!NOTE] 
+> Les providers utilisés pour Docker et MinIO ne sont pas des providers officiels, mais des providers communautaires maintenus par la communauté OpenTofu.
 
-## 4. Architecture
+### 2. Architecture
 
 L’architecture repose sur un découplage entre la présentation, la logique d’orchestration, et l’infrastructure cible. Elle est conçue de manière modulaire et stateless, avec une exécution conteneurisée, un backend unique pilotant OpenTofu, et un stockage persistant via S3. Le backend agit comme point de convergence, en orchestrant toutes les interactions entre les autres composants.
 
-<img src="C:\Users\timot\Documents\HEIG\PLM\infra\doc\img\containers.png" style="zoom:50%;" />
+#### Vue d’ensemble des conteneurs
+
+| Conteneur          | Image                          | Volumes persistants |
+| ------------------ | ------------------------------ |---------------------|
+| `spawnit-backend`  | `ghcr.io/spawnit/backend`      | N/A                 |
+| `spawnit-frontend` | `ghcr.io/spawnit/frontend`     | N/A                 |
+| `minio`            | `minio/minio:latest`           | `minio-data`        |
+| `keycloak`         | `quay.io/keycloak/keycloak:24` | `keycloak-data`     |
+
 
 **Backend**
 
-Le backend est une application Node.js conteneurisée, qui expose une API REST et un canal Server-Sent Events (SSE). Il encapsule également l’exécution locale de commandes OpenTofu. Il ne maintient aucun état en mémoire, tout est lu et écrit depuis S3.
-
-Chaque exécution de `tofu` est isolée dans un répertoire temporaire reconstruit à la volée à partir des fichiers distants. Cette approche garantit un découplage fort entre l’interface, les configurations utilisateur, et l’infrastructure sous-jacente. Le backend peut donc gérer plusieurs clients, services et environnements sans collisions ni état partagé.
+Le backend est une application Node.js conteneurisée, qui expose une API REST et un canal Server-Sent Events (SSE). Il encapsule également l’exécution locale de commandes OpenTofu.
 
 **Frontend**
 
-Le frontend est une application web statique, déployée dans un conteneur Docker distinct. Il ne contient aucune logique métier et ne connaît ni la structure des fichiers Terraform ni l’infrastructure cible. Il interagit exclusivement avec l’API backend. Cette séparation garantit une portabilité totale et une indépendance vis-à-vis du moteur d’infrastructure. L’interface est dynamique : elle charge le catalogue des services, récupère les templates associés, construit dynamiquement les formulaires, et suit l’exécution des plans en temps réel via SSE.
-
-**OpenTofu (moteur d’infrastructure)**
-
-OpenTofu est intégré dans le conteneur backend. Il est déclenché par des sous-processus Node.js. Aucun plugin externe ou wrapper n’est utilisé. L’architecture est pensée pour que le backend soit agnostique du provider Terraform sous-jacent : que l’on déploie sur Docker ou AWS, la logique backend reste la même. Les modules Terraform sont organisés en sous-modules, chacun exposant une interface identique côté variable.
-
-Cette structure permet l’extension vers d’autres providers triviale : il suffit d’ajouter un module avec les bonnes conventions, aucun changement n’est requis côté backend ou frontend.
+Le frontend est une application web statique, déployée dans un conteneur Docker distinct. Il ne contient aucune logique métier et ne connaît ni la structure des fichiers Terraform ni l’infrastructure cible. Il interagit exclusivement avec l’API backend. 
 
 **S3 (MinIO)**
 
-Le stockage des fichiers est entièrement externalisé sur un backend S3-compatible. Tous les artefacts sont sérialisés et organisés sous la forme :
+Le stockage des fichiers est entièrement externalisé sur ce serveur S3.
 
-```
-clients/
-  └── <client_id>/
-        ├── <service_id>/terraform.tfvars.json
-        ├── <service_id>/terraform.tfstate
-        └── network/<provider>/...
-templates/
-  └── *.template.tfvars.json
-```
+**Keycloak**
 
-## 5. Déploiement
+Keycloak est utilisé pour gérer l’authentification des utilisateurs via OpenID Connect. Il permet de sécuriser l’accès à l’interface web. Keycloak est configuré pour fonctionner en mode autonome, avec un volume persistant pour conserver les données des utilisateurs et des configurations.
+### 3. Déploiement
 
-Le déploiement de l’application repose sur des scripts shell qui encapsulent chacun une étape du provisioning. Ces scripts n’exécutent pas des commandes Docker, mais appellent systématiquement OpenTofu avec les fichiers de configuration appropriés. Chaque brique de l’application (volumes, réseau, conteneurs, configuration) est décrite de façon déclarative, dans des modules Terraform versionnés localement.
+Pour comprendre le déploiement de SpawnIt, il convient de se concentrer sur les quatre dossiers racine du projet :
 
-Le script `all-deploy.sh` est le point d’entrée principal. Il déclenche successivement quatre sous-scripts. Chacun d'eux appelle `tofu init` et `tofu apply` sur le module Terraform correspondant, dans un répertoire de travail isolé, en injectant les variables d’environnement nécessaires (en particulier celles liées à l’hôte ou au provider). Cette structure permet une réutilisabilité complète : chaque étape peut être rejouée indépendamment, ou intégrée dans un pipeline CI.
+- `instances/`: contient le code principal pour le déploiement des conteneurs applicatifs (backend, frontend, Keycloak, MinIO).
+- `network/`: gère la création du réseau Docker utilisé par les différents services.
+- `volumes/`: définit les volumes Docker persistants nécessaires au bon fonctionnement des services.
+- `configs/`: configure les services déployés, par exemple la création des buckets MinIO ou l’initialisation d’un realm Keycloak.
 
-- Le script `volumes-deploy.sh` crée les volumes Docker persistants nécessaires à certains services (MinIO, bases de données)
+Dans chaque dossier, on trouve :
+- des fichiers `*.auto.tfvars.json` qui définissent les valeurs propres à l'infrastructure de ce composant ;
+- un fichier `variables.tf` qui déclare les variables attendues et fournit leur description ;
+- un fichier `main.tf` contenant la logique de provisionnement spécifique à chaque composant.
+
+>[!NOTE] 
+> - Les bonnes pratiques OpenTofu recommandent de séparer la déclaration des variables d’entrée (`variables.tf`) de leurs valeurs concrètes (`*.auto.tfvars.json`). Cela permet la réutilisation des modules.
+> - Les fichiers `*.auto.tfvars.json` sont chargés automatiquement par OpenTofu lors de l’exécution, ce qui simplifie la gestion des variables par environnement.
+> - En principe, il est recommandé de séparer les valeurs par environnement (développement, production, etc.) via des fichiers nommés `*.<env>.auto.tfvars.json`. Cependant, dans notre cas, nous avons choisi de regrouper les variables par module pour simplifier la structure du projet.
+
+Pour automatiser le déploiement de l’application, nous avons mis en place des scripts shell qui encapsulent chacun une étape du provisioning. 
+Ces scripts n’exécutent pas des commandes Docker, mais appellent systématiquement OpenTofu avec les fichiers de configuration appropriés.
+
+Le script `all-deploy.sh` est le point d’entrée principal. Il déclenche successivement quatre sous-scripts.
+
+- Le script `volumes-deploy.sh` crée les volumes Docker persistants nécessaires à certains services (MinIO, Keycloak).
 - Le script `network-deploy.sh` crée le réseau Docker auquel tous les conteneurs applicatifs seront connectés.
 - Le script `instances-deploy.sh` déclare les conteneurs de l’application (S3, Backend, Frontend, Keycloak) en utilisant le provider Docker.
 - Enfin, `configs-deploy.sh` applique des modules supplémentaires pour injecter des configurations spécifiques dans les services lancés, par exemple la création de buckets dans MinIO ou l’initialisation d’un realm Keycloak.
 
-Chacune de ces étapes est décrite de façon purement déclarative, dans des fichiers `main.tf` et `terraform.tfvars.json` propres à chaque module. Les modules .tf sont réutilisables : ils utilisent les mêmes interfaces (`var.instance`, `var.provider`, ... que les services déployés par l’interface web.
+Chaque script utilise son propre répertoire de travail, appelle `tofu init`, puis applique l’infrastructure avec `tofu apply -auto-approve`. L’approche est modulaire, idempotente et parfaitement compatible avec une intégration CI/CD.
+
+Ce choix a été fait pour garantir que chaque étape du déploiement est indépendante et peut être testée ou modifiée sans affecter les autres. Cette granularité nous permet de détruire ou de mettre à jour des parties spécifiques de l'infrastructure sans avoir à redéployer l'ensemble de l'application.
+
+> [!NOTE] 
+> - Avec OpenTofu, il est techniquement possible de cibler des ressources précises à détruire ou modifier. Toutefois, **cela est déconseillé** dans la pratique : une suppression partielle peut rompre les dépendances implicites du graphe (DAG) d’infrastructure. Des ressources dépendantes risquent de rester orphelines, causant des incohérences difficiles à corriger automatiquement.
+> - Un délai de 20 secondes est introduit entre chaque étape de déploiement. Ce délai permet de s’assurer que les conteneurs sont correctement initialisés avant de passer à l’étape suivante et eviter les erreurs liées à des ressources non prêtes.
+
 
 C’est là l’un des aspects les plus intéressants de cette architecture : le déploiement de SpawnIt lui-même est réalisé en appliquant exactement la même logique que celle utilisée pour déployer n’importe quel service depuis l’interface web. Les modules, les scripts, la structure des variables et le moteur d’exécution sont identiques. En d’autres termes, l’application se déploie avec les mêmes mécanismes qu’elle met à disposition de ses utilisateurs.
 
-<img src="doc/img/deploy.png" style="zoom:50%;" />
+<img src="doc/img/deploy.png" style="zoom:100%;"  alt=""/>
 
+### 4. Modularité et réutilisabilité
+
+```
+modules/
+├── common/
+│   ├── configs/
+│   │   ├── idp/
+│   │   │   ├── client/       # Déclaration d'un client Keycloak
+│   │   │   ├── realm/        # Définition d'un realm Keycloak
+│   │   │   └── user/         # Création d'un utilisateur Keycloak
+│   │   └── s3/
+│   │       ├── bucket/       # Création d'un bucket MinIO/S3
+│   │       ├── content/      # Upload de contenu dans un bucket
+│   │       ├── file/         # Ajout de fichier individuel
+│   │       └── folder/       # Création de dossier logique
+│
+├── docker/
+│   ├── instances/            # Lancement d'un conteneur (générique)
+│   ├── network/              # Création d’un réseau Docker
+│   └── volumes/              # Déclaration de volumes Docker
+```
 
 
 ## 6. Workflow
