@@ -49,7 +49,8 @@ Sans providers, un code OpenTofu ne peut rien faire. Nous avons choisi d’utili
 - Un provider **Keycloak** pour deployer un serveur d'authentification et de gestion des utilisateurs.
 - Un provider **MinIO** pour déployer un server de stockage compatible S3, qui servira utilisé comme datastore principal pour les états OpenTofu des différentes infrastructures déployées (via la configuration du backend S3 d'OpenTofu). Aussi utilisé pour les configurations de service spécifiques à chaque client et les templates de service de base qui sont servis au frontend.
 
-> [!NOTE] >  Les providers utilisés pour Docker et MinIO ne sont pas des providers officiels, mais des providers communautaires maintenus par la communauté OpenTofu.
+> [!NOTE] 
+> > Les providers utilisés pour Docker et MinIO ne sont pas des providers officiels, mais des providers communautaires maintenus par la communauté OpenTofu.
 
 ### 2. Architecture
 
@@ -94,7 +95,8 @@ Dans chaque dossier, on trouve :
 - un fichier `variables.tf` qui déclare les variables attendues et fournit leur description ;
 - un fichier `main.tf` contenant la logique de provisionnement spécifique à chaque composant.
 
->[!NOTE] > - Les bonnes pratiques OpenTofu recommandent de séparer la déclaration des variables d’entrée (`variables.tf`) de leurs valeurs concrètes (`*.auto.tfvars.json`). Cela permet la réutilisation des modules.
+>[!NOTE] 
+> - Les bonnes pratiques OpenTofu recommandent de séparer la déclaration des variables d’entrée (`variables.tf`) de leurs valeurs concrètes (`*.auto.tfvars.json`). Cela permet la réutilisation des modules.
 > - Les fichiers `*.auto.tfvars.json` sont chargés automatiquement par OpenTofu lors de l’exécution, ce qui simplifie la gestion des variables par environnement.
 > - En principe, il est recommandé de séparer les valeurs par environnement (développement, production, etc.) via des fichiers nommés `*.<env>.auto.tfvars.json`. Cependant, dans notre cas, nous avons choisi de regrouper les variables par module pour simplifier la structure du projet.
 
@@ -112,7 +114,8 @@ Chaque script utilise son propre répertoire de travail, appelle `tofu init`, pu
 
 Ce choix a été fait pour garantir que chaque étape du déploiement est indépendante et peut être testée ou modifiée sans affecter les autres. Cette granularité nous permet de détruire ou de mettre à jour des parties spécifiques de l'infrastructure sans avoir à redéployer l'ensemble de l'application.
 
-> [!NOTE] > - Avec OpenTofu, il est techniquement possible de cibler des ressources précises à détruire ou modifier. Toutefois, **cela est déconseillé** dans la pratique. Pour comprendre pourquoi il faut se rappeler de la l'implementation du moteur d'éxecution et de son DAG. Une suppression partielle peut rompre les dépendances implicites du graphe d’infrastructure. Des ressources dépendantes risquent de rester orphelines, causant des incohérences difficiles à corriger automatiquement.
+> [!NOTE] 
+> - Avec OpenTofu, il est techniquement possible de cibler des ressources précises à détruire ou modifier. Toutefois, **cela est déconseillé** dans la pratique. Pour comprendre pourquoi il faut se rappeler de la l'implementation du moteur d'éxecution et de son DAG. Une suppression partielle peut rompre les dépendances implicites du graphe d’infrastructure. Des ressources dépendantes risquent de rester orphelines, causant des incohérences difficiles à corriger automatiquement.
 > - Un délai de 20 secondes a été introduit entre chaque étape de déploiement. Ce délai permet de s’assurer que les conteneurs sont correctement initialisés avant de passer à l’étape suivante et eviter les erreurs liées à des ressources non prêtes.
 
 <img src="doc/img/deploy.png" style="zoom:100%;"  alt=""/>  
