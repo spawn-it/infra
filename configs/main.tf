@@ -41,6 +41,7 @@ module "idp_create_users" {
   user     = var.default_users[count.index]
 }
 
+# Create a folder for each user in the S3 bucket
 module "s3_create_client_folder" {
   source = "../modules/common/configs/s3/folder"
   providers = {
