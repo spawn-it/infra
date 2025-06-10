@@ -1,0 +1,257 @@
+digraph {
+    // ═══════════════════════════════════════════════════════════════
+    // CONFIGURATION GLOBALE DU GRAPHE
+    // ═══════════════════════════════════════════════════════════════
+    compound = "true"
+    newrank = "true"
+    rankdir = "TB"  // Top to Bottom
+    bgcolor = "white"
+    fontname = "Arial"
+    fontsize = 12
+    
+    // Style par défaut des nœuds
+    node [
+        fontname = "Arial",
+        fontsize = 10,
+        margin = 0.1
+    ]
+    
+    // Style par défaut des arêtes
+    edge [
+        color = "#666666",
+        fontname = "Arial",
+        fontsize = 8
+    ]
+    
+    subgraph "cluster_root" {
+        label = "lan OpenTofu - Instances Docker"
+        style = "rounded,filled"
+        fillcolor = "#f8f9fa"
+        color = "#dee2e6"
+        fontsize = 14
+        fontname = "Arial Bold"
+        
+        // ═══════════════════════════════════════════════════════════════
+        // PROVIDER - Point central (DIAMANT)
+        // ═══════════════════════════════════════════════════════════════
+        
+        provider_docker [
+            label = "Docker Provider\nregistry.opentofu.org/\nkreuzwerker/docker",
+            shape = "diamond",
+            style = "filled",
+            fillcolor = "#e3f2fd",
+            color = "#1976d2",
+            penwidth = 2,
+            fontcolor = "#0d47a1",
+            fontsize = 9
+        ]
+        
+        // ═══════════════════════════════════════════════════════════════
+        // VARIABLES D'ENTRÉE (NOTES)
+        // ═══════════════════════════════════════════════════════════════
+        
+        var_aws_access [
+            label = "host_aws_access_key_id",
+            shape = "note",
+            style = "filled",
+            fillcolor = "#fff3e0",
+            color = "#f57c00",
+            fontcolor = "#e65100"
+        ]
+        
+        var_aws_region [
+            label = "host_aws_default_region",
+            shape = "note",
+            style = "filled",
+            fillcolor = "#fff3e0",
+            color = "#f57c00",
+            fontcolor = "#e65100"
+        ]
+        
+        var_aws_secret [
+            label = "host_aws_secret_access_key",
+            shape = "note",
+            style = "filled",
+            fillcolor = "#fff3e0",
+            color = "#f57c00",
+            fontcolor = "#e65100"
+        ]
+        
+        var_instances [
+            label = "instances\n(configuration)",
+            shape = "note",
+            style = "filled",
+            fillcolor = "#e8f5e8",
+            color = "#388e3c",
+            fontcolor = "#1b5e20"
+        ]
+        
+        // ═══════════════════════════════════════════════════════════════
+        // DONNÉES LOCALES (TRAITEMENT)
+        // ═══════════════════════════════════════════════════════════════
+        
+        local_processed [
+            label = "processed_instances\n(données traitées)",
+            shape = "ellipse",
+            style = "filled",
+            fillcolor = "#f3e5f5",
+            color = "#7b1fa2",
+            fontcolor = "#4a148c"
+        ]
+        
+        // ═══════════════════════════════════════════════════════════════
+        // MODULE PRINCIPAL
+        // ═══════════════════════════════════════════════════════════════
+        
+        subgraph "cluster_docker_module" {
+            label = "Module docker_instances"
+            style = "rounded,dashed,filled"
+            fillcolor = "#f0f4ff"
+            color = "#3f51b5"
+            fontcolor = "#1a237e"
+            
+            // Ressources Docker
+            docker_network [
+                label = "docker_network\n(custom_network)",
+                shape = "box",
+                style = "filled,rounded",
+                fillcolor = "#e1f5fe",
+                color = "#0277bd",
+                fontcolor = "#01579b"
+            ]
+            
+            docker_image [
+                label = "docker_image\n(instance)",
+                shape = "box",
+                style = "filled,rounded",
+                fillcolor = "#e8f5e8",
+                color = "#388e3c",
+                fontcolor = "#1b5e20"
+            ]
+            
+            docker_container [
+                label = "docker_container\n(instance)",
+                shape = "box",
+                style = "filled,rounded",
+                fillcolor = "#fff8e1",
+                color = "#f9a825",
+                fontcolor = "#f57f17",
+                penwidth = 2
+            ]
+            
+            // Variables du module
+            subgraph "cluster_module_vars" {
+                label = "Variables du module"
+                style = "dotted"
+                color = "#9e9e9e"
+                
+                mod_var_image [label = "image", shape = "plaintext", fontsize = 8]
+                mod_var_container_name [label = "container_name", shape = "plaintext", fontsize = 8]
+                mod_var_network_name [label = "network_name", shape = "plaintext", fontsize = 8]
+                mod_var_ports [label = "ports", shape = "plaintext", fontsize = 8]
+                mod_var_env_vars [label = "env_vars", shape = "plaintext", fontsize = 8]
+                mod_var_command [label = "command", shape = "plaintext", fontsize = 8]
+                mod_var_has_volume [label = "has_volume", shape = "plaintext", fontsize = 8]
+                mod_var_volume_name [label = "volume_name", shape = "plaintext", fontsize = 8]
+                mod_var_access_docker [label = "access_to_docker", shape = "plaintext", fontsize = 8]
+            }
+        }
+        
+        // ═══════════════════════════════════════════════════════════════
+        // NŒUDS DE CYCLE DE VIE
+        // ═══════════════════════════════════════════════════════════════
+        
+        root_start [
+            label = "START",
+            shape = "circle",
+            style = "filled",
+            fillcolor = "#c8e6c9",
+            color = "#388e3c"
+        ]
+        
+        root_end [
+            label = "END",
+            shape = "circle",
+            style = "filled",
+            fillcolor = "#ffcdd2",
+            color = "#d32f2f"
+        ]
+        
+        // ═══════════════════════════════════════════════════════════════
+        // DÉPENDANCES CRITIQUES - FLUX PRINCIPAL
+        // ═══════════════════════════════════════════════════════════════
+        
+        // Variables → Traitement local
+        var_aws_access -> local_processed [color = "#ff9800", penwidth = 2, label = "config"]
+        var_aws_region -> local_processed [color = "#ff9800", penwidth = 2, label = "config"]
+        var_aws_secret -> local_processed [color = "#ff9800", penwidth = 2, label = "config"]
+        var_instances -> local_processed [color = "#4caf50", penwidth = 3, label = "données"]
+        
+        // Données traitées → Module
+        local_processed -> docker_network [color = "#2196f3", penwidth = 2, label = "init"]
+        local_processed -> docker_image [color = "#2196f3", penwidth = 2, label = "init"]
+        
+        // Provider → Ressources Docker
+        provider_docker -> docker_network [color = "#1976d2", penwidth = 2, label = "API", style = "dashed"]
+        provider_docker -> docker_image [color = "#1976d2", penwidth = 2, label = "API", style = "dashed"]
+        provider_docker -> docker_container [color = "#1976d2", penwidth = 2, label = "API", style = "dashed"]
+        
+        // ═══════════════════════════════════════════════════════════════
+        // CHAÎNE DE CRÉATION DES CONTAINERS
+        // ═══════════════════════════════════════════════════════════════
+        
+        // Prérequis pour les containers
+        docker_network -> docker_container [
+            color = "#00bcd4", 
+            penwidth = 3, 
+            label = "réseau\nprêt",
+            fontcolor = "#006064"
+        ]
+        
+        docker_image -> docker_container [
+            color = "#4caf50", 
+            penwidth = 3, 
+            label = "image\ndispo",
+            fontcolor = "#1b5e20"
+        ]
+        
+        // Variables → Ressources (sélection des plus importantes)
+        mod_var_network_name -> docker_network [color = "#9e9e9e", style = "dotted"]
+        mod_var_image -> docker_image [color = "#9e9e9e", style = "dotted"]
+        
+        mod_var_container_name -> docker_container [color = "#9e9e9e", style = "dotted"]
+        mod_var_ports -> docker_container [color = "#9e9e9e", style = "dotted"]
+        mod_var_env_vars -> docker_container [color = "#9e9e9e", style = "dotted"]
+        mod_var_has_volume -> docker_container [color = "#9e9e9e", style = "dotted"]
+        
+        // ═══════════════════════════════════════════════════════════════
+        // CYCLE DE VIE GLOBAL
+        // ═══════════════════════════════════════════════════════════════
+        
+        root_start -> var_instances [color = "#4caf50", penwidth = 2]
+        root_start -> provider_docker [color = "#2196f3", penwidth = 2]
+        
+        docker_container -> root_end [color = "#f44336", penwidth = 2, label = "déployé"]
+        provider_docker -> root_end [color = "#2196f3", style = "dashed"]
+    }
+    
+    // ═══════════════════════════════════════════════════════════════
+    // LÉGENDE
+    // ═══════════════════════════════════════════════════════════════
+    
+    subgraph "cluster_legend" {
+        label = "Légende"
+        style = "rounded,filled"
+        fillcolor = "#fafafa"
+        color = "#757575"
+        
+        legend_provider [label = "Provider", shape = "diamond", style = "filled", fillcolor = "#e3f2fd"]
+        legend_resource [label = "Ressource", shape = "box", style = "filled,rounded", fillcolor = "#fff8e1"]
+        legend_variable [label = "Variable", shape = "note", style = "filled", fillcolor = "#fff3e0"]
+        legend_data [label = "Données", shape = "ellipse", style = "filled", fillcolor = "#f3e5f5"]
+        
+        legend_provider -> legend_resource [label = "dépend de", style = "invis"]
+        legend_resource -> legend_variable [style = "invis"]
+        legend_variable -> legend_data [style = "invis"]
+    }
+}

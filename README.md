@@ -203,7 +203,7 @@ module.s3_bucket_create
 
     -   donc transitivement de `module.idp_create_realm` aussi
 
-### DAG
+### 5. DAG
 #### 1. Source du graphe (DOT)
 Comme expliqué dans la partie théorique et juste avant, le moteur d’exécution d’OpenTofu repose sur un graphe orienté acyclique pour modéliser les dépendances entre ressources et garantir un ordre d’exécution cohérent. Regardons un peu ce qui donne les dépendances dans `instances`. On peut le voir en utilisant:
 ```bash
@@ -237,13 +237,16 @@ digraph {
 
 ### 2. Rendu visuel
 
-![](doc/img/instance_graph_sfdp.svg)
+![](doc/img/dag_sfdp_styled.svg)
 > **Légende :**
 > - **Boîtes** : ressources ou modules déployés.
 > - **Diamants** : fournisseurs/providers.
 > - **Notes** : variables d’entrée (`var.*`).
 > - **Flèches** : dépendances (une flèche A → B signifie que B dépend de A).
 
+[!NOTE]
+> - Le graphe est généré par la commande `tofu graph` et peut être visualisé avec des outils comme Graphviz.
+> - La représentation graphique "dur" se trouve dans le fichier `./doc/instance_graph_sfdp.svg`.
 
 ### 3. Lecture et interprétation
 
