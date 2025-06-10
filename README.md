@@ -244,7 +244,7 @@ digraph {
 > - **Notes** : variables d’entrée (`var.*`).
 > - **Flèches** : dépendances (une flèche A → B signifie que B dépend de A).
 
-[!NOTE]
+> [!NOTE]
 > - Le graphe est généré par la commande `tofu graph` et peut être visualisé avec des outils comme Graphviz.
 > - La représentation graphique "dur" se trouve dans le fichier `./doc/instance_graph_sfdp.svg`.
 
