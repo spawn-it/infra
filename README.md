@@ -114,6 +114,8 @@ Chaque script utilise son propre répertoire de travail, appelle `tofu init`, pu
 
 Ce choix a été fait pour garantir que chaque étape du déploiement est indépendante et peut être testée ou modifiée sans affecter les autres. Cette granularité nous permet de détruire ou de mettre à jour des parties spécifiques de l'infrastructure sans avoir à redéployer l'ensemble de l'application.
 
+Pour détruire l’infrastructure, il suffit d'écrire `./all-deploy.sh destroy` dans le terminal. Elle se detruit dans l’ordre inverse de son déploiement.
+
 > [!NOTE] 
 > - Avec OpenTofu, il est techniquement possible de cibler des ressources précises à détruire ou modifier. Toutefois, **cela est déconseillé** dans la pratique. Pour comprendre pourquoi il faut se rappeler de la l'implementation du moteur d'éxecution et de son DAG. Une suppression partielle peut rompre les dépendances implicites du graphe d’infrastructure. Des ressources dépendantes risquent de rester orphelines, causant des incohérences difficiles à corriger automatiquement.
 > - Un délai de 20 secondes a été introduit entre chaque étape de déploiement. Ce délai permet de s’assurer que les conteneurs sont correctement initialisés avant de passer à l’étape suivante et eviter les erreurs liées à des ressources non prêtes.
