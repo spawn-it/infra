@@ -3,14 +3,9 @@
 
 **Auteurs :** Massimo Stefani et Timothée Van Hove
 
-> [!IMPORTANT]  
->  Ce projet est un *proof‑of‑concept* pédagogique réalisé dans le cadre d’un cours.   
->  Il est **fortement déconseillé de l’utiliser en production**: aucune mesure de sécurité robuste n’a été implémentée (mots de passe stockés en clair, absence de protocoles de chiffrement ou d’authentification renforcée, etc.).   
->  Utilisez‑le exclusivement à des fins d’apprentissage et d’expérimentation.
-
 ## 1. Introduction
 
-SpawnIt est une application **«Infrastructure‑as‑Code pour tous»** qui s’appuie intégralement sur le moteur d’orchestration **OpenTofu** (fork communautaire de Terraform). Son objectif: rendre le déploiement et la destruction de services techniques aussi simples qu’un clic, tout en conservant la puissance d’une description déclarative.
+SpawnIt est une application «Infrastructure‑as‑Code pour tous» qui s’appuie intégralement sur le moteur d’orchestration OpenTofu (fork communautaire de Terraform). Son objectif: rendre le déploiement et la destruction de services techniques aussi simples qu’un clic, tout en conservant la puissance d’une description déclarative:
 
 > *Décrire l’état voulu plutôt que la procédure pour y parvenir.*
 
@@ -22,27 +17,20 @@ Nous avons retenu OpenTofu, un moteur d’infrastructure open‑source issu du p
 
 Note: Il se peut que vous rencontriez des références à Terraform dans le code ou la documentation.
 
-### Application auto‑déployée et double approche IaC / API‑First
+### 2.1 Application auto‑déployée et double approche IaC / API‑First
 
-SpawnIt n’est pas seulement un orchestrateur d’infrastructure: **il se déploie lui‑même à l’aide d’OpenTofu**. Nous exploitons deux voies complémentaires qui illustrent la flexibilité du projet:
+SpawnIt n’est pas seulement un orchestrateur d’infrastructure: **il se déploie lui‑même à l’aide d’OpenTofu**. Nous exploitons deux voies complémentaires qui démontrent la flexibilité du projet:
 
-1. **IaC traditionnelle – scripts OpenTofu**: toute l’infrastructure d’hébergement de SpawnIt (réseau, volumes persistants, conteneurs système, etc.) est décrite dans des modules OpenTofu conservés dans notre dépôt Git (versionnés via tags Git). Des scripts shell (`all-deploy.sh`, `network-deploy.sh`, …) appellent successivement les commandes Opentofu pour créer ou mettre à jour cet environnement.
-2. **API‑First – infrastructure «as‑a‑Service»**: côté utilisateur, aucune ligne de code Terraform n’est exposée. Une requête HTTP décrivant un service est convertie à la volée en un fichier de variables (`.tfvars.json`), Nous avons cherché à répliquer à notre échelle ce que fait AWS avec CloudFormation: décrire une pile, l’appliquer, et obtenir un service prêt à l’emploi sans manipuler directement la couche IaC. On demande une base de données ou un cluster de jeu et, quelques secondes plus tard, le service est opérationnel.
+1. **IaC traditionnelle – scripts OpenTofu**: Toute l’infrastructure d’hébergement de SpawnIt (réseau, volumes persistants, conteneurs système, etc.) est décrite dans des modules OpenTofu conservés dans notre dépôt Git (versionnés via tags Git). Des scripts shell (`all-deploy.sh`, `network-deploy.sh`, …) appellent successivement les commandes Opentofu pour créer ou mettre à jour cet environnement.
+2. **API‑First – infrastructure «as‑a‑Service»**: Côté utilisateur, aucune ligne de code Terraform n’est exposée. Une requête HTTP décrivant un service est convertie à la volée en un fichier de variables (`.tfvars.json`), Nous avons cherché à répliquer à notre échelle ce que fait AWS avec CloudFormation: décrire une pile, l’appliquer, et obtenir un service prêt à l’emploi sans manipuler directement la couche IaC. On demande une base de données ou un cluster de jeu et, quelques secondes plus tard, le service est opérationnel.
 
-Ce document décrit **les deux aspects complémentaires** de SpawnIt: d’une part l’architecture de l’infrastructure déployée avec OpenTofu (conteneurs, modules, scripts), et d’autre part la logique métier (API, orchestrateur, interface utilisateur) qui permet à SpawnIt de proposer une expérience « as-a-Service ».
+Ce document décrit les deux aspects complémentaires de SpawnIt: d’une part l’architecture de l’infrastructure déployée avec OpenTofu (conteneurs, modules, scripts), et d’autre part la logique métier (API, orchestrateur, interface utilisateur) qui permet à SpawnIt de proposer une expérience « as-a-Service ».
 
 La suite est divisée en deux sections claires: d’abord l’infrastructure (présentée ici), puis la couche métier (plus bas dans ce même document).
 
-## 3. Prérequis
+## 3. Infrastructure - IaC traditionnelle
 
-SpawnIt nécessite seulement deux outils installés localement:
-
-* **Docker**: Testé avec la version>=28.0.0, mais toute version récente devrait convenir.
-* **OpenTofu CLI**: Testé avec la version>=1.9.
-
-## 4. Infrastructure - IaC traditionnelle
-
-### 1. Choix Technologiques
+### 3.1. Choix Technologiques
 Sans providers, un code OpenTofu ne peut rien faire. Nous avons choisi d’utiliser les providers suivants pour répondre à nos besoins :
 
 - Un provider **Docker** pour déployer localement des services dans des conteneurs.
@@ -50,9 +38,10 @@ Sans providers, un code OpenTofu ne peut rien faire. Nous avons choisi d’utili
 - Un provider **MinIO** pour déployer un server de stockage compatible S3, qui servira utilisé comme datastore principal pour les états OpenTofu des différentes infrastructures déployées (via la configuration du backend S3 d'OpenTofu). Aussi utilisé pour les configurations de service spécifiques à chaque client et les templates de service de base qui sont servis au frontend.
 
 > [!NOTE] 
-> > Les providers utilisés pour Docker et MinIO ne sont pas des providers officiels, mais des providers communautaires maintenus par la communauté OpenTofu.
+>
+> Les providers utilisés pour Docker et MinIO ne sont pas des providers officiels, mais des providers communautaires maintenus par la communauté OpenTofu.
 
-### 2. Architecture
+### 3.2. Architecture
 
 L’architecture repose sur un découplage entre la présentation, la logique d’orchestration, et l’infrastructure cible. Elle est conçue de manière modulaire et stateless, avec une exécution conteneurisée, un backend unique pilotant OpenTofu, et un stockage persistant via S3. Le backend agit comme point de convergence, en orchestrant toutes les interactions entre les autres composants.
 
@@ -81,14 +70,14 @@ Le stockage des fichiers est entièrement externalisé sur ce serveur S3.
 **Keycloak**
 
 Keycloak est utilisé pour gérer l’authentification des utilisateurs via OpenID Connect. Il permet de sécuriser l’accès à l’interface web. Keycloak est configuré pour fonctionner en mode autonome, avec un volume persistant pour conserver les données des utilisateurs et des configurations.
-### 3. Déploiement
+### 3.3. Déploiement
 
 Pour comprendre le déploiement de SpawnIt, il convient de se concentrer sur les quatre dossiers racine du projet :
 
-- `instances/`: contient le code principal pour le déploiement des conteneurs applicatifs (backend, frontend, Keycloak, MinIO).
-- `network/`: gère la création du réseau Docker utilisé par les différents services.
-- `volumes/`: définit les volumes Docker persistants nécessaires au bon fonctionnement des services.
-- `configs/`: configure les services déployés, par exemple la création des buckets MinIO ou l’initialisation d’un realm Keycloak.
+- `instances/` contient le code principal pour le déploiement des conteneurs applicatifs (backend, frontend, Keycloak, MinIO).
+- `network/` gère la création du réseau Docker utilisé par les différents services.
+- `volumes/` définit les volumes Docker persistants nécessaires au bon fonctionnement des services.
+- `configs/` configure les services déployés, par exemple la création des buckets MinIO ou l’initialisation d’un realm Keycloak.
 
 Dans chaque dossier, on trouve :
 - des fichiers `*.auto.tfvars.json` qui définissent les valeurs propres à l'infrastructure de ce composant ;
@@ -100,8 +89,7 @@ Dans chaque dossier, on trouve :
 > - Les fichiers `*.auto.tfvars.json` sont chargés automatiquement par OpenTofu lors de l’exécution, ce qui simplifie la gestion des variables par environnement.
 > - En principe, il est recommandé de séparer les valeurs par environnement (développement, production, etc.) via des fichiers nommés `*.<env>.auto.tfvars.json`. Cependant, dans notre cas, nous avons choisi de regrouper les variables par module pour simplifier la structure du projet.
 
-Pour automatiser le déploiement de l’application, nous avons mis en place des scripts shell qui encapsulent chacun une étape du provisioning.   
-Ces scripts n’exécutent pas des commandes Docker, mais appellent systématiquement OpenTofu avec les fichiers de configuration appropriés.
+Pour automatiser le déploiement de l’application, nous avons mis en place des scripts shell qui encapsulent chacun une étape du provisioning.  Ces scripts n’exécutent pas des commandes Docker, mais appellent systématiquement OpenTofu avec les fichiers de configuration appropriés.
 
 Le script `all-deploy.sh` est le point d’entrée principal. Il déclenche successivement quatre sous-scripts.
 
@@ -117,14 +105,14 @@ Ce choix a été fait pour garantir que chaque étape du déploiement est indép
 Pour détruire l’infrastructure, il suffit d'écrire `./all-deploy.sh destroy` dans le terminal. Elle se detruit dans l’ordre inverse de son déploiement.
 
 > [!NOTE] 
-> - Avec OpenTofu, il est techniquement possible de cibler des ressources précises à détruire ou modifier. Toutefois, **cela est déconseillé** dans la pratique. Pour comprendre pourquoi il faut se rappeler de la l'implementation du moteur d'éxecution et de son DAG. Une suppression partielle peut rompre les dépendances implicites du graphe d’infrastructure. Des ressources dépendantes risquent de rester orphelines, causant des incohérences difficiles à corriger automatiquement.
-> - Un délai de 20 secondes a été introduit entre chaque étape de déploiement. Ce délai permet de s’assurer que les conteneurs sont correctement initialisés avant de passer à l’étape suivante et eviter les erreurs liées à des ressources non prêtes.
+> - Avec OpenTofu, il est possible de cibler des ressources précises à détruire ou modifier, mais cela est déconseillé. Une suppression partielle peut rompre les dépendances implicites du graphe d’infrastructure. Des ressources dépendantes risquent de rester orphelines, causant des incohérences difficiles à corriger automatiquement.
+> - Un délai de 20 secondes a été introduit entre chaque étape de déploiement pour permettre aux conteneurs de correctement s'initialiser avant de passer à l’étape suivante. Cela évite les erreurs liées à des ressources non prêtes.
 
-<img src="doc/img/deploy.png" style="zoom:100%;"  alt=""/>  
+<img src="doc/img/deploy.png" style="zoom:50%;"  alt=""/>  
 
-### 4. Modularité et réutilisabilité
+### 3.4. Modularité et réutilisabilité
 
-La structure du répertoire `modules/` reflète une séparation claire des responsabilités, facilitant sa réutilisation.
+La structure du répertoire `modules/` montre une séparation claire des responsabilités, facilitant sa réutilisation.
 
 ```  
 modules/  
@@ -144,8 +132,8 @@ modules/
 │   ├── instances/            # Lancement d'un conteneur (générique)  
 │   ├── network/              # Création d’un réseau Docker  
 │   └── volumes/              # Déclaration de volumes Docker  
-```  
-#### Utilisation concrète : création de dossiers S3
+```
+#### 3.4.1. Utilisation concrète : création de dossiers S3
 Imaginons que l’on souhaite créer des dossiers dans notre bucket MinIO/S3, par exemple pour organiser les fichiers propres à chaque client. Grâce à la modularité, nous utilisons le même module `folder` pour deux cas d’usage différents :
 
 1. **Création du dossier racine `clients/` :**
@@ -163,7 +151,7 @@ module "s3_folder_create" {
 }
 ```
 2. **Création dynamique d’un dossier pour chaque utilisateur :**
-```
+```terraform
 # Create a folder for each user in the S3 bucket
 module "s3_create_client_folder" {  
   source = "../modules/common/configs/s3/folder"  
@@ -178,11 +166,12 @@ module "s3_create_client_folder" {
 ```
 
 > [!NOTE]
-> - Les modules `instances`, `network` et `volumes` sont conçus pour être agnostiques vis-à-vis des technologies utilisées (par exemple, Docker ou Podman).
+>
+> - Les modules `instances`, `network` et `volumes` sont faits pour être agnostiques vis-à-vis des technologies utilisées (par exemple, Docker ou Podman).
 > - Toutefois, cette agnosticité a ses limites : certains éléments comme les `providers` doivent obligatoirement être définis dans le `main.tf` de la racine du projet, car ils ne peuvent pas être abstraits à l'intérieur d’un module.
 > - Techniquement, la création du dossier `clients/` n’est pas obligatoire dans S3, car la création des sous-dossiers utilisateurs (`clients/<uuid>/`) crée automatiquement l’arborescence complète. Cependant, cela reste utile comme exemple.
 
-#### Représentation dans le DAG
+#### 3.4.2. Représentation dans le DAG
 
 Ce découpage clair permet une représentation directe et lisible dans le graphe d'exécution DAG :
 ```
@@ -205,11 +194,9 @@ module.s3_bucket_create
 
     -   donc transitivement de `module.idp_create_realm` aussi
 
-### 5. DAG
-#### 1. Source du graphe (DOT)
-Comme expliqué dans la partie théorique et juste avant, le moteur d’exécution d’OpenTofu repose sur un graphe orienté acyclique pour modéliser les dépendances entre ressources et garantir un ordre d’exécution cohérent. Regardons un peu ce qui donne les dépendances dans `instances`. On peut le voir en utilisant:
+### 3.5. DAG et dépendances
+Comme expliqué dans la partie théorique, l’un des apports majeurs d’OpenTofu est son moteur d’exécution basé sur un graphe orienté acyclique (DAG). Chaque ressource déclarée dans les fichiers `.tf` devient un nœud dans ce graphe, et les relations de dépendance déterminent l’ordre d’exécution. Regardons un peu ce qui donne les dépendances dans `instances`. On peut le voir en utilisant la commande `tofu graph`:
 ```bash
-tofu graph
 digraph {
 	compound = "true"
 	newrank = "true"
@@ -229,152 +216,183 @@ digraph {
         // Variables d'entrée du plan racine
         "[root] var.host_aws_access_key_id" [label = "var.host_aws_access_key_id", shape = "note"]
         "[root] var.host_aws_default_region" [label = "var.host_aws_default_region", shape = "note"]
-        "[root] var.host_aws_secret_access_key" [label = "var.host_aws_secret_access_key", shape = "note"]
-        "[root] var.instances" [label = "var.instances", shape = "note"]
 		...
 	}
 }
 ```
 *(La suite complète du graphe est disponible dans le fichier `./doc/tofu-graph.dot`.)*
 
-### 2. Rendu visuel
 
-![](doc/img/dag_sfdp_styled.svg)
-> **Légende :**
-> - **Boîtes** : ressources ou modules déployés.
-> - **Diamants** : fournisseurs/providers.
-> - **Notes** : variables d’entrée (`var.*`).
-> - **Flèches** : dépendances (une flèche A → B signifie que B dépend de A).
 
+![](doc/img/dag.svg)
 > [!NOTE]
+>
 > - Le graphe est généré par la commande `tofu graph` et peut être visualisé avec des outils comme Graphviz.
 > - La représentation graphique "dur" se trouve dans le fichier `./doc/instance_graph_sfdp.svg`. L'image ci-dessus est une version stylisée pour une meilleure lisibilité.
 
-### 3. Lecture et interprétation
+#### 3.5.1. Lecture et interprétation
 
-#### 3.1. Structure globale
+Le graphe est structuré autour d’un nœud racine, qui représente l’ensemble du plan d’exécution. Les formes du diagramme permettent d’identifier rapidement les différents types de nœuds : les variables sont en vert (icônes type fichier), les données locales apparaissent en violet, les ressources sont en beige, les providers en losange bleu, et les points de début/fin sont cerclés.
 
-**Racine (`root`)**  
-L'ensemble des nœuds est contenu dans un sous-graphe `root`, représentant l'état global du plan OpenTofu.
+Les nœuds les plus structurants de ce graphe sont ceux liés au module `docker_instances`, responsable du déploiement des conteneurs. On observe que les variables utilisateur (nom de l’image, ports, volumes, environnement, etc.) alimentent une étape de transformation locale (`processed_instances`), qui produit une structure exploitable dans le reste du graphe. À partir de là, OpenTofu évalue les dépendances techniques : image à télécharger, réseau Docker à détecter, provider à initialiser, et enfin conteneur à créer.
 
-**Modules**
+#### 3.5.2. Points de contrôle critiques
 
--   `module.docker_instances` : orchestration complète de la création des containers Docker
--   Encapsulation des ressources Docker dans un module réutilisable
+Certaines ressources sont traversées systématiquement par le graphe d’exécution. C’est le cas du provider Docker (`provider["registry.opentofu.org/kreuzwerker/docker"]`), qui agit comme point de passage obligatoire pour toutes les opérations sur les ressources Docker (conteneurs, images, réseaux, volumes). Sa position centrale dans le DAG en fait un nœud de synchronisation incontournable : aucune action Docker ne peut être exécutée tant que ce provider n’a pas été initialisé avec succès.
 
-#### 3.2. Points de contrôle critiques
+De la même manière, la ressource `data.docker_network.custom_network` est sollicitée en lecture par tous les conteneurs. Ce n’est pas une création active, mais une interrogation du réseau Docker existant. Comme chaque conteneur fait référence à ce réseau, une indisponibilité ou un nom incorrect à ce niveau bloquerait toute la chaîne de déploiement.
 
-**Fournisseur Docker (Provider)**  
-Le nœud `provider["registry.opentofu.org/kreuzwerker/docker"]` (diamant) constitue le point central :
+Enfin, `docker_image.instance` représente la récupération de l’image Docker (pull), elle aussi nécessaire à la création de tout conteneur. Ces trois nœuds — provider, réseau, image — structurent le début du plan d’exécution.
 
--   Toutes les ressources Docker transitent par ce provider
--   Garantit la cohérence des opérations Docker
--   Point de synchronisation pour les actions sur l'infrastructure Docker
+**Variables d'entrée** 
 
+Ces variables sont récupérées depuis les variables d'environnement de la machine hôte pour être injectées dans le container.
 
-**Variables d'entrée**  
-Les nœuds en forme de note montrent la configuration injectée :
 - `var.host_aws_access_key_id` : authentification AWS pour les ressources hybrides
 - `var.host_aws_default_region` : région AWS par défaut
 - `var.host_aws_secret_access_key` : clé secrète AWS
-- `var.instances` : configuration des instances à déployer
 
-#### 3.3. Chaîne de dépendances critiques
+#### 3.5.3. Chaîne de dépendances critiques
+
+Le processus de déploiement s’organise en plusieurs phases bien identifiables dans le graphe.
 
 **Phase 1 : Préparation des données**
+
 ```
 var.* → local.processed_instances → module.docker_instances
 ```
-Les variables sont d'abord traitées avant l'initialisation du module.
+ Les variables utilisateur sont injectées depuis le fichier `auto.tfvars.json`, puis transformées par un bloc `locals` qui produit une structure `processed_instances`. Cette structure est utilisée dans tout le module pour instancier dynamiquement les ressources.
 
 **Phase 2 : Résolution du réseau**
 ```
 network_name → data.docker_network → containers
 ```
-Le réseau Docker doit être identifié avant tout déploiement de container.
+Avant de pouvoir créer un conteneur, OpenTofu doit s’assurer que le réseau mentionné est existant et accessible. Cela passe par la ressource `data.docker_network`, qui agit comme un prérequis silencieux mais strict.
 
 **Phase 3 : Préparation des images**
 ```
 image_var → docker_image → containers
 ```
-Les images Docker doivent être disponibles avant la création des containers.
+ La ressource `docker_image` s’assure que l’image spécifiée est bien disponible localement (pull si nécessaire). Ce n’est qu’une fois l’image présente que les conteneurs peuvent être instanciés.
 
 **Phase 4 : Création des containers**
 ```
 network + image + variables → docker_container
 ```
-Convergence de toutes les dépendances pour la création finale.
+Création effective des conteneurs (`docker_container.instance`), qui dépend de l’ensemble des étapes précédentes. C’est là que convergent les dépendances issues des données, du réseau, de l’image et du provider.
 
-#### 3.4. Points de synchronisation
+#### 3.5.4. Points de synchronisation
 
-**Dépendances obligatoires pour chaque container :**
-- Réseau Docker disponible (`data.docker_network`)
-- Image Docker résolue (`docker_image.instance`)
-- Configuration complète (ports, volumes, environnement, etc.)
-- Provider Docker initialisé
+La synchronisation du plan est assurée par les dépendances explicites (via les attributs `depends_on`) et implicites (par référence de ressource). Par exemple, même sans `depends_on` manuel, le fait que `docker_container` utilise `docker_image` dans un attribut `image = ...` suffit à créer une relation dans le DAG.
 
-**Ordre d'exécution garanti :**
-1. Chargement des variables et traitement local
-2. Initialisation du provider Docker
-3. Résolution du réseau Docker existant
-4. Pull/vérification des images Docker
-5. Création des containers avec leur configuration complète
-6. Fermeture ordonnée des ressources
+OpenTofu garantit donc un ordre strict pour la création des conteneurs : les variables sont chargées, le provider Docker est initialisé, le réseau est résolu, l’image est téléchargée, et seulement ensuite les conteneurs sont créés. Cela permet d’éviter les erreurs de type “ressource non prête” tout en laissant OpenTofu maximiser la parallélisation là où c’est possible.
 
-### 4. Optimisations et parallélisation
+#### 3.5.5. Optimisations
 
-**Exécution parallèle possible :**
-- Résolution du réseau et pull des images peuvent s'exécuter en parallèle
-- Variables du module peuvent être évaluées simultanément
-- Containers indépendants peuvent être créés en parallèle
+Le DAG généré par SpawnIt permet plusieurs formes d’optimisations.
 
-**Goulots d'étranglement :**
-- Le provider Docker est un point de passage obligé
-- Le réseau doit être résolu avant tous les containers
-- Chaque image doit être disponible pour ses containers respectifs
+La récupération des images Docker (`docker_image`) et la lecture du réseau (`data.docker_network`) peuvent être réalisées en parallèle, car elles ne dépendent que de la structure `processed_instances`. De plus, si plusieurs conteneurs doivent être créés à partir d’images différentes ou configurés indépendamment, ces créations peuvent également être parallélisées.
+
+Certains points restent des goulots d’étranglement : le provider Docker est centralisé, et toutes les opérations y transitent ; le réseau doit être résolu avant tout conteneur ; chaque image doit être disponible avant sa première utilisation. Malgré cela, OpenTofu exploite efficacement les chemins parallèles du graphe pour gagner en vitesse dès que c’est possible.
+
+## 4. Infrastructure - API‑First
+
+Dans ce chapitre, on ne parle plus de l’infrastructure qui exécute SpawnIt, mais de celle que SpawnIt déploie en tant que service, via son interface utilisateur.
+
+### 4.1. Choix Technologiques
+
+- Provider AWS pour OpenTofu : Permet la création et la gestion d'instances EC2, de Security Groups.
+- Provider Docker pour OpenTofu : Permet la gestion des conteneurs, réseaux et volumes Docker
+- Node.js avec Express : Utilisé pour la gestion des routes, des middlewares et des requêtes HTTP.
+- Server-Sent Events (SSE) : fournit un retour au client web pendant les opérations OpenTofu (planification, application).
+- Next.js (React) : Choisi pour ses capacités de rendu côté serveur, et son écosystème React.
+- Material UI : Utilisée comme librairie de composants UI.
+
+### 4.1. Principe et architecture API‑First
+
+L’approche API‑First de SpawnIt vise à abstraire la complexité de Terraform/OpenTofu du point de vue de l’utilisateur. Contrairement à une approche classique où l’utilisateur manipule directement des fichiers `.tf`, ici toutes les opérations sont pilotées via des requêtes HTTP.
+
+Le backend agit comme point d’orchestration central : il transforme les requêtes utilisateurs en configurations Terraform, déclenche localement les opérations `tofu`, et diffuse les résultats en temps réel. Il ne conserve aucun état durable ; toutes les données nécessaires à la reconstitution d’un déploiement sont stockées sur S3 (MinIO).
+
+L’utilisateur ne manipule donc jamais la couche IaC directement. Il choisit un service, renseigne quelques champs dans un formulaire, et le système se charge du reste : génération de la configuration, planification, application, supervision.
+
+### 4.2. Génération dynamique de la configuration
+
+Chaque service déployable dans SpawnIt repose sur un template de configuration (`*.template.tfvars.json`) pré-enregistré dans le dossier `templates/` du bucket S3. Ces fichiers définissent la structure attendue pour instancier un service donné (ex. : base de données, serveur de jeu), en exposant des variables dynamiques typées.
+
+Lorsque l’utilisateur soumet un formulaire via l’interface web, le frontend envoie au backend une requête contenant les valeurs saisies. Le backend récupère le template correspondant, remplit les champs avec les données utilisateur, y ajoute les métadonnées (provider, clientId, serviceId, etc.), et sérialise le tout dans un fichier `terraform.tfvars.json`.
+
+<img src="doc/img/config.png" style="zoom:50%;" />
+
+Ce fichier est ensuite stocké dans le chemin S3 suivant :
+
+```
+clients/{clientId}/{serviceId}/terraform.tfvars.json
+```
+
+À ce stade, aucune commande OpenTofu n’est exécutée. Cette phase ne fait que **préparer une configuration persistée**, qui pourra ensuite être validée, appliquée ou détruite à la demande.
+
+> [!NOTE]
+>
+> Le backend ne conserve aucune copie locale de ces fichiers : tout repose sur la lecture/écriture depuis S3. Cela garantit une résilience naturelle (statelessness) et une forte cohérence entre les différents composants.
+
+### 4.3. Initialisation du répertoire de travail
+
+Pour chaque opération d’infrastructure (plan, apply, destroy), SpawnIt crée dynamiquement un répertoire de travail local, isolé pour le couple `(clientId, serviceId)`. Ce répertoire est instancié dans :
+
+```
+./workdirs/{clientId}/{serviceId}/
+```
+
+Le backend y télécharge depuis S3 tous les fichiers nécessaires :
+
+- la configuration (`terraform.tfvars.json`),
+- le fichier d’état (`terraform.tfstate`), s’il existe,
+- et le backend config (`backend.tf.json`), généré dynamiquement si besoin.
+
+Une fois ce répertoire prêt, la commande `tofu init` est appelée avec les bons paramètres :
+
+- backend de type `s3`,
+- nom du bucket (`spawn-it-bucket`),
+- chemin du fichier d’état (`clients/{clientId}/{serviceId}/terraform.tfstate`),
+- credentials d’accès (MinIO ou AWS) injectés via des variables d’environnement.
+
+<img src="doc/img/workdir.png" style="zoom:50%;" />
+
+Cette initialisation est idempotente. Si elle a déjà été faite pour ce service, elle peut être réutilisée. Sinon, elle est recréée à froid à chaque appel, ce qui permet de garantir que chaque exécution part d’un état propre.
+
+> [!NOTE] 
+>
+> Ce mode de fonctionnement permet au backend d’être entièrement **stateless** : aucun fichier de configuration ou état n’est conservé durablement côté serveur. Même après un redémarrage, toutes les données peuvent être rechargées depuis S3.
 
 
-## 6. Workflow
 
-SpawnIt utilise un enchaînement d’étapes gérées par le backend, avec une séparation entre les phases de génération de configuration, de provisioning, et de supervision. L’ensemble du système est gérée via une API ou chaque endpoint déclenche des actions Terraform en local, sur la base de fichiers centralisés dans S3.
+### 4.5. Supervision et gestion des exécutions
 
-**Génération de configuration et persistance dans S3**
+Pour détecter des modifications manuelles ou des dérives d’état (ex. : suppression d’un conteneur Docker en dehors de SpawnIt), une planification continue est mise en place pour chaque service actif. Le backend exécute automatiquement un `tofu plan` toutes les 10 secondes sur le service ciblé, et transmet le résultat aux clients connectés. Cela permet à l’utilisateur d’être alerté en temps réel en cas de divergence entre l’état attendu et l’état réel.
 
-Tous les services deployables sont basés sur des templates JSON prééxistants. Lorsqu’un utilisateur choisit un service à déployer et renseigne ses paramètres dans l’interface, ces informations sont envoyées au backend. Le backend les encapsule dans une structure standardisée conforme au schéma d’entrée des modules Terraform. Il ajoute dynamiquement des valeurs et sérialise l’ensemble dans un fichier `terraform.tfvars.json`. Ce fichier est ensuite stocké sur S3.
+Chaque exécution de plan, d’apply ou de destroy est encapsulée dans un job identifié par un UUID unique. Ces jobs sont stockés dans une table en mémoire, ce qui permet de suivre leur progression et de les interrompre à tout moment. Une requête REST dédiée permet par exemple d’interrompre un `plan` ou un `apply` en cours, ce qui déclenche un `SIGTERM` sur le processus enfant associé.
 
-Cette étape ne déclenche aucun déploiement. Elle sert uniquement à constituer une base déclarative persistée, qui pourra ensuite être appliquée ou modifiée. Le backend ne conserve aucun état local. Toutes les informations sont reconstruites à partir des fichiers distants, ce qui permet de redémarrer le backend à tout moment sans perte d’état.
+<img src="doc/img/plan.png" style="zoom:50%;" />
 
-<img src="C:\Users\timot\Documents\HEIG\PLM\infra\doc\img\config.png" style="zoom:50%;" />  
+En cas de redémarrage du backend, cette table de jobs est perdue, mais cela n’impacte pas la stabilité globale : les processus sont isolés, et comme l’état est externalisé sur S3, aucun effet secondaire ne persiste.
 
-**Préparation du répertoire de travail**
+> [!NOTE]
+>
+> Ce modèle simple permet d’assurer une supervision efficace sans mécanisme de file ou de stockage distribué.
 
-Pour chaque opération Terraform (`plan`, `apply`, `destroy`), le backend crée à la volée un répertoire de travail sous `./workdirs/{clientId}/{serviceId}/`. Il y télécharge depuis S3 tous les fichiers associés (variables et état). La logique d’initialisation est encapsulée dans une instance `OpenTofuCommand`, qui passe le contexte `(clientId, serviceId)`.
+### 4.6. Abstraction des providers
 
-Avant chaque exécution, cette instance appelle `tofu init` avec les bons paramètres backend (bucket, chemin du fichier d’état, région, endpoint MinIO ou AWS, etc.), en injectant ces informations via des variables d’environnement. Cette initialisation est faite à froid pour chaque exécution, sauf si elle a déjà été faite dans le contexte courant. Elle est donc idempotente, mais évite les recharges inutiles.
+L’un des gros avantage de SpawnIt est sa capacité à déployer sur plusieurs environnements sans changer la logique métier. Le backend ne contient aucune logique spécifique à un provider donné. Le fonctionnement reste identique que l’on déploie en local (via Docker) ou dans le cloud (via AWS EC2).
 
-<img src="C:\Users\timot\Documents\HEIG\PLM\infra\doc\img\workdir.png" style="zoom:50%;" />  
+Cette abstraction repose sur deux mécanismes :
 
-**Validation, planification, application et destruction**
+1. Chaque module Terraform utilisé par SpawnIt respecte une interface commune : les noms de variables, les schémas d’entrée et les conventions de fichiers sont les mêmes, quel que soit le provider (Docker, AWS, etc.).
+2. La configuration envoyée par le frontend inclut une propriété `provider`, qui détermine dynamiquement le chemin du module à utiliser (par exemple `services/docker/instance` ou `services/aws/instance`).
 
-Avant de lancer un plan sur un service, le backend vérifie que la couche réseau associée est existante et conforme. Il le fait en lançant un plan sur le module réseau du provider spécifié (`network/local` ou `network/aws`) avec son propre fichier de variables. Si le plan indique une divergence, ou si le fichier de configuration est manquant, l’opération principale est bloquée. Cette validation réseau est déduite dynamiquement à partir des paramètres du service (`provider` et `network_name`), ce qui permet à deux services d’un même client de partager une même couche réseau tout en étant déployés indépendamment.
+Cette structure permet de rajouter un nouveau provider de manière totalement indépendante. Il suffit de créer un nouveau module Terraform respectant l’interface attendue (par exemple `services/k8s/instance` pour Kubernetes), et de l’ajouter au catalogue de services. Aucun changement n’est nécessaire côté backend, ni dans l’interface. Cette approche rend le système particulièrement extensible.
 
-Une fois le répertoire de travail prêt et le réseau validé, le backend lance la commande `tofu plan`. La sortie de cette commande est capturée en flux et transmise au client via SSE. Le backend analyse également cette sortie pour en déduire un statut formel : "compliant" (aucune modification à prévoir), "drifted" (modifications planifiées), ou "error" (exécution échouée).
-
-Si l’utilisateur confirme le plan, la commande `tofu apply` est déclenchée. Elle suit le même mécanisme que `plan` : création d’un processus local, capture de la sortie, transmission par SSE. L’apply est exécuté avec l’option `-auto-approve` pour garantir l’absence d’interaction.
-
-La destruction (`tofu destroy`) suit le même schéma et est toujours précédée d’un plan implicite pour vérifier l’état du service à supprimer. Le backend ne fait pas de nettoyage automatique des répertoires de travail, mais ceux-ci peuvent être supprimés sans conséquence, puisque l’état est toujours sauvegardé dans S3.
-
-<img src="C:\Users\timot\Documents\HEIG\PLM\infra\doc\img\plan.png" style="zoom:50%;" />  
-
-**Supervision et gestion des jobs**
-
-SpawnIt utilise une boucle de planification continue sur tous les services. Un `setInterval` exécute toutes les 10 secondes un `plan` sur le service ciblé. Le résultat est envoyé aux clients connectés. Cette fonctionnalité est utile pour détecter des dérives manuelles (modifications de conteneurs ou d’instances en dehors de SpawnIt), sans avoir besoin d’un agent sur la machine cible.
-
-Chaque exécution de `apply`, `destroy` ou `plan` est associée à un UUID et conservée dans une table en mémoire. Cela permet à l’utilisateur d’annuler un job en cours via une requête dédiée, ce qui envoie un `SIGTERM` au processus sous-jacent. En cas de plantage du backend, cette table est perdue, mais comme les processus sont exécutés localement et encapsulés, les effets secondaires sont limités. Les jobs terminés sont automatiquement retirés de la table.
-
-
-
-## 7. Discussion et limites
+## 5. Discussion et limites
 
 Notre architecture modulaire permet à chaque composant, que ce soit le backend, les modules Terraform, ou les scripts de déploiement d'être facilement réutilisables et extensibles. Le modèle de configuration utilisant les templates et les variables rend l’extension du catalogue de services extrêmement simple. L’ajout d’un nouveau service ne nécessite aucune modification du backend ni du frontend : il suffit de déposer un nouveau fichier template et de l’enregistrer dans le fichier `catalog.json`. Le fait que l'application soit auto-déployable est une preuve de cohérence. Cette boucle fermée illustre bien l’intention initiale du projet de tirer parti de l'interface déclarative pour la gestion d’infrastructure.
 
@@ -382,7 +400,7 @@ Certaines limitations subsistent. La persistance de l’état repose sur le back
 
 
 
-## 8. **Conclusion**
+## 6. **Conclusion**
 
 Notre projet démontre qu’il est possible de proposer une interface de déploiement légère et déclarative, sans sacrifier la flexibilité ni l’extensibilité. L’approche déclarative a joué un grand rôle dans la structuration du projet. En isolant chaque étape du déploiement et en les décrivant comme des modules indépendants, l’architecture reste lisible, reproductible et facilement testable. Cette structure a également facilité la mise en place de l’auto-hébergement, qui démontre la cohérence du modèle choisi.
 
