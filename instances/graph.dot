@@ -24,7 +24,7 @@ digraph {
     ]
     
     subgraph "cluster_root" {
-        label = "lan OpenTofu - Instances Docker"
+        label = "Plan OpenTofu - Instances Docker"
         style = "rounded,filled"
         fillcolor = "#f8f9fa"
         color = "#dee2e6"
@@ -139,21 +139,85 @@ digraph {
                 penwidth = 2
             ]
             
-            // Variables du module
+            // Variables du module (NOTES comme les autres variables)
             subgraph "cluster_module_vars" {
                 label = "Variables du module"
-                style = "dotted"
+                style = "dotted,filled"
+                fillcolor = "#fafafa"
                 color = "#9e9e9e"
                 
-                mod_var_image [label = "image", shape = "plaintext", fontsize = 8]
-                mod_var_container_name [label = "container_name", shape = "plaintext", fontsize = 8]
-                mod_var_network_name [label = "network_name", shape = "plaintext", fontsize = 8]
-                mod_var_ports [label = "ports", shape = "plaintext", fontsize = 8]
-                mod_var_env_vars [label = "env_vars", shape = "plaintext", fontsize = 8]
-                mod_var_command [label = "command", shape = "plaintext", fontsize = 8]
-                mod_var_has_volume [label = "has_volume", shape = "plaintext", fontsize = 8]
-                mod_var_volume_name [label = "volume_name", shape = "plaintext", fontsize = 8]
-                mod_var_access_docker [label = "access_to_docker", shape = "plaintext", fontsize = 8]
+                mod_var_image [
+                    label = "var.image", 
+                    shape = "note", 
+                    style = "filled",
+                    fillcolor = "#e8f5e8",
+                    color = "#388e3c",
+                    fontsize = 8
+                ]
+                mod_var_container_name [
+                    label = "var.container_name", 
+                    shape = "note", 
+                    style = "filled",
+                    fillcolor = "#e8f5e8",
+                    color = "#388e3c",
+                    fontsize = 8
+                ]
+                mod_var_network_name [
+                    label = "var.network_name", 
+                    shape = "note", 
+                    style = "filled",
+                    fillcolor = "#e8f5e8",
+                    color = "#388e3c",
+                    fontsize = 8
+                ]
+                mod_var_ports [
+                    label = "var.ports", 
+                    shape = "note", 
+                    style = "filled",
+                    fillcolor = "#e8f5e8",
+                    color = "#388e3c",
+                    fontsize = 8
+                ]
+                mod_var_env_vars [
+                    label = "var.env_vars", 
+                    shape = "note", 
+                    style = "filled",
+                    fillcolor = "#e8f5e8",
+                    color = "#388e3c",
+                    fontsize = 8
+                ]
+                mod_var_command [
+                    label = "var.command", 
+                    shape = "note", 
+                    style = "filled",
+                    fillcolor = "#e8f5e8",
+                    color = "#388e3c",
+                    fontsize = 8
+                ]
+                mod_var_has_volume [
+                    label = "var.has_volume", 
+                    shape = "note", 
+                    style = "filled",
+                    fillcolor = "#e8f5e8",
+                    color = "#388e3c",
+                    fontsize = 8
+                ]
+                mod_var_volume_name [
+                    label = "var.volume_name", 
+                    shape = "note", 
+                    style = "filled",
+                    fillcolor = "#e8f5e8",
+                    color = "#388e3c",
+                    fontsize = 8
+                ]
+                mod_var_access_docker [
+                    label = "var.access_to_docker", 
+                    shape = "note", 
+                    style = "filled",
+                    fillcolor = "#e8f5e8",
+                    color = "#388e3c",
+                    fontsize = 8
+                ]
             }
         }
         
@@ -247,8 +311,8 @@ digraph {
         
         legend_provider [label = "Provider", shape = "diamond", style = "filled", fillcolor = "#e3f2fd"]
         legend_resource [label = "Ressource", shape = "box", style = "filled,rounded", fillcolor = "#fff8e1"]
-        legend_variable [label = "Variable", shape = "note", style = "filled", fillcolor = "#fff3e0"]
-        legend_data [label = "Données", shape = "ellipse", style = "filled", fillcolor = "#f3e5f5"]
+        legend_variable [label = "Variable", shape = "note", style = "filled", fillcolor = "#e8f5e8"]
+        legend_data [label = "Données locales", shape = "ellipse", style = "filled", fillcolor = "#f3e5f5"]
         
         legend_provider -> legend_resource [label = "dépend de", style = "invis"]
         legend_resource -> legend_variable [style = "invis"]
