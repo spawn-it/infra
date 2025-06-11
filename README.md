@@ -344,13 +344,9 @@ terraform {
 }
 ```
 
-Cette configuration indique à OpenTofu de stocker l'état dans un bucket S3 plutôt que localement. 
-Lors d'un `tofu init`, OpenTofu configure automatiquement la connexion au backend et migre l'état existant si nécessaire.
+Cette configuration indique à OpenTofu de stocker l'état dans un bucket S3 plutôt que localement.  Lors d'un `tofu init`, OpenTofu configure automatiquement la connexion au backend et migre l'état existant si nécessaire.
 
-Malheureusement, cette approche statique ne convient pas entièrement à SpawnIt, car elle nécessite de stocker l'état dans 
-un bucket S3 spécifique avec un chemin fixe, ce qui n'est pas compatible avec notre modèle de multi-tenancy. 
-Chaque client doit pouvoir gérer ses propres services sans interférer avec les autres. 
-Il faut donc une approche plus flexible, qui permette de créer dynamiquement des chemins S3 pour chaque client et service.
+Malheureusement, cette approche statique ne convient pas entièrement à SpawnIt, car elle nécessite de stocker l'état dans un bucket S3 spécifique avec un chemin fixe, ce qui n'est pas compatible avec notre modèle de multi-tenancy. Chaque client doit pouvoir gérer ses propres services sans interférer avec les autres.  Il faut donc une approche plus flexible, qui permette de créer dynamiquement des chemins S3 pour chaque client et service.
 
 #### 4.2.3. Backend S3 personnalisé
 Pour répondre à ce besoin, SpawnIt utilise une configuration backend partiellement vide qui sera complétée dynamiquement 
@@ -439,26 +435,17 @@ Le backend SpawnIt gère automatiquement le cycle de vie de ces répertoires :
 > SpawnIt n'implémente pas toutes ces fonctionnalités de nettoyage, or cela pourrait être une amélioration future.
 
 > [!IMPORTANT] 
-> - Bien que nous ayons réussi à diminuer les risques de conflits grâce à l'isolation des répertoires de travail, il est 
-> important de noter que cette approche présente encore des limitations. Nous n'avons pas mis en place de mécanisme de 
-> verrouillage au niveau applicatif pour gérer les accès concurrentiels sur un même service. 
-> Le risque de corruption du dossier .terraform/ persiste si un utilisateur tente d'exécuter deux commandes OpenTofu en 
-> parallèle sur le même service (par exemple, un plan et un apply simultanés).
-> - Une solution simple consisterait à implémenter un mutex par service dans le backend Node.js. En utilisant une 
-> Map de mutex indexée par `{clientId}:{serviceId}`, on pourrait s'assurer qu'une seule opération OpenTofu s'exécute 
-> à la fois par service, tout en permettant la parallélisation entre différents services.
+> - Bien que nous ayons réussi à diminuer les risques de conflits grâce à l'isolation des répertoires de travail, il est important de noter que cette approche présente encore des limitations. Nous n'avons pas mis en place de mécanisme de verrouillage au niveau applicatif pour gérer les accès concurrentiels sur un même service. 
+> Le risque de corruption du dossier .terraform/ persiste si un utilisateur tente d'exécuter deux commandes OpenTofu en parallèle sur le même service (par exemple, un plan et un apply simultanés).
+> - Une solution simple consisterait à implémenter un mutex par service dans le backend Node.js. En utilisant une Map de mutex indexée par `{clientId}:{serviceId}`, on pourrait s'assurer qu'une seule opération OpenTofu s'exécute à la fois par service, tout en permettant la parallélisation entre différents services.
 
 Maintenant que les bases sont posées, nous pouvons aborder le fonctionnement détaillé de SpawnIt, en commençant par la génération dynamique des configurations de service.
 
 ### 4.4. Génération dynamique de la configuration
 
-Chaque service déployable dans SpawnIt repose sur un template de configuration (`*.template.tfvars.json`) pré-enregistré 
-dans le dossier `templates/` du bucket S3. Ces fichiers définissent la structure attendue pour instancier un service 
-donné (ex. : base de données, serveur de jeu).
+Chaque service déployable dans SpawnIt repose sur un template de configuration (`*.template.tfvars.json`) pré-enregistré dans le dossier `templates/` du bucket S3. Ces fichiers définissent la structure attendue pour instancier un service  donné (ex. : base de données, serveur de jeu).
 
-Lorsque l’utilisateur soumet un formulaire via l’interface web, le frontend envoie au backend une requête contenant les 
-valeurs saisies. Le backend récupère le configuration correspondant, ajoute des données de la logique métier et 
-sérialise le tout dans un fichier `terraform.tfvars.json`.
+Lorsque l’utilisateur soumet un formulaire via l’interface web, le frontend envoie au backend une requête contenant les valeurs saisies. Le backend récupère le configuration correspondant, ajoute des données de la logique métier et sérialise le tout dans un fichier `terraform.tfvars.json`.
 
 <img src="doc/img/config.png" style="zoom:50%;" />
 
@@ -480,9 +467,7 @@ qui pourra ensuite être validée, appliquée ou détruite à la demande.
 
 ### 4.5. Initialisation du répertoire de travail
 
-Le backend applicatif SpawnIt utilise un modèle "sync before run" pour garantir la cohérence et la traçabilité des déploiements. 
-Cette approche consiste à maintenir une copie locale de tous les fichiers nécessaires dans le répertoire de travail, 
-facilitant ainsi l'injection des variables dans le code OpenTofu lors d'une exécution et la visualisation de son contenu pour le débogage.
+Le backend applicatif SpawnIt utilise un modèle "sync before run" pour garantir la cohérence et la traçabilité des déploiements. Cette approche consiste à maintenir une copie locale de tous les fichiers nécessaires dans le répertoire de travail, facilitant ainsi l'injection des variables dans le code OpenTofu lors d'une exécution et la visualisation de son contenu pour le débogage.
 
 #### 4.5.1. Processus de synchronisation
 
@@ -510,13 +495,9 @@ Cette initialisation est idempotente, elle peut être recréée à froid à chaq
 
 ### 4.6. Supervision et gestion des exécutions
 
-Pour détecter des modifications manuelles ou des dérives d’état (ex. : suppression d’un conteneur Docker en dehors de SpawnIt), 
-une planification continue est mise en place pour chaque service actif. Le backend exécute automatiquement un `tofu plan` 
-toutes les 10 secondes sur le service ciblé, et transmet le résultat aux clients connectés. Cela permet à l’utilisateur 
-d’être alerté en temps réel en cas de divergence entre l’état attendu et l’état réel.
+Pour détecter des modifications manuelles ou des dérives d’état (ex. : suppression d’un conteneur Docker en dehors de SpawnIt), une planification continue est mise en place pour chaque service actif. Le backend exécute automatiquement un `tofu plan`  toutes les 10 secondes sur le service ciblé, et transmet le résultat aux clients connectés. Cela permet à l’utilisateur d’être alerté en temps réel en cas de divergence entre l’état attendu et l’état réel.
 
-Chaque exécution de plan, d’apply ou de destroy est encapsulée dans un job identifié par un UUID unique. Ces jobs sont 
-stockés dans une table en mémoire, ce qui permet de suivre leur progression et de les interrompre à tout moment. Une requête REST dédiée permet par exemple d’interrompre un `plan` ou un `apply` en cours, ce qui déclenche un `SIGTERM` sur le processus enfant associé.
+Chaque exécution de plan, d’apply ou de destroy est encapsulée dans un job identifié par un UUID unique. Ces jobs sont  stockés dans une table en mémoire, ce qui permet de suivre leur progression et de les interrompre à tout moment. Une requête REST dédiée permet par exemple d’interrompre un `plan` ou un `apply` en cours, ce qui déclenche un `SIGTERM` sur le processus enfant associé.
 
 <img src="doc/img/plan.png" style="zoom:50%;" />
 
@@ -553,12 +534,7 @@ rend le système particulièrement extensible.
 
 ## 5. Discussion et limites
 
-Notre architecture modulaire permet à chaque composant, que ce soit le backend, les modules Terraform, ou les scripts de 
-déploiement d'être facilement réutilisables et extensibles. Le modèle de configuration utilisant les templates et les 
-variables rend l’extension du catalogue de services extrêmement simple. L’ajout d’un nouveau service ne nécessite aucune 
-modification du backend ni du frontend : il suffit de déposer un nouveau fichier template et de l’enregistrer dans le 
-fichier `catalog.json`. Le fait que l'application soit auto-déployable est une preuve de cohérence. Cette boucle fermée 
-illustre bien l’intention initiale du projet de tirer parti de l'interface déclarative pour la gestion d’infrastructure.
+Notre architecture modulaire permet à chaque composant, que ce soit le backend, les modules Terraform, ou les scripts de  déploiement d'être facilement réutilisables et extensibles. Le modèle de configuration utilisant les templates et les  variables rend l’extension du catalogue de services extrêmement simple. L’ajout d’un nouveau service ne nécessite aucune  modification du backend ni du frontend : il suffit de déposer un nouveau fichier template et de l’enregistrer dans le  fichier `catalog.json`. Le fait que l'application soit auto-déployable est une preuve de cohérence. Cette boucle fermée  illustre bien l’intention initiale du projet de tirer parti de l'interface déclarative pour la gestion d’infrastructure.
 
 
 API ouverte
