@@ -19,7 +19,7 @@ Note: Il se peut que vous rencontriez des références à Terraform dans le code
 
 ### 2.1 Application auto‑déployée et double approche IaC / API‑First
 
-SpawnIt n’est pas seulement un orchestrateur d’infrastructure: **il se déploie lui‑même à l’aide d’OpenTofu**. Nous exploitons deux voies complémentaires qui démontrent la flexibilité du projet:
+SpawnIt n’est pas seulement un orchestrateur d’infrastructure: il se déploie lui‑même à l’aide d’OpenTofu. Nous exploitons deux voies complémentaires qui démontrent la flexibilité du projet:
 
 1. **IaC traditionnelle – scripts OpenTofu**: Toute l’infrastructure d’hébergement de SpawnIt (réseau, volumes persistants, conteneurs système, etc.) est décrite dans des modules OpenTofu conservés dans notre dépôt Git (versionnés via tags Git). Des scripts shell (`all-deploy.sh`, `network-deploy.sh`, …) appellent successivement les commandes Opentofu pour créer ou mettre à jour cet environnement.
 2. **API‑First – «Platform-as‑a‑Service»**: Côté utilisateur, aucune ligne de code Terraform n’est exposée. Une requête HTTP décrivant un service est convertie à la volée en un fichier de variables (`.tfvars.json`), Nous avons cherché à répliquer à notre échelle ce que fait AWS avec CloudFormation: décrire une pile, l’appliquer, et obtenir un service prêt à l’emploi sans manipuler directement la couche IaC. On demande une base de données ou un cluster de jeu et, quelques secondes plus tard, le service est opérationnel.
@@ -43,7 +43,7 @@ Sans providers, un code OpenTofu ne peut rien faire. Nous avons choisi d’utili
 
 ### 3.2. Architecture
 
-L’architecture repose sur un découplage entre la présentation, la logique d’orchestration, et l’infrastructure cible. Elle est conçue de manière modulaire et stateless, avec une exécution conteneurisée, un backend unique pilotant OpenTofu, et un stockage persistant via S3. Le backend agit comme point de convergence, en orchestrant toutes les interactions entre les autres composants.
+L’architecture repose sur un découplage entre la présentation, la logique d’orchestration, et l’infrastructure cible. Elle est conçue de manière modulaire et stateless, avec une exécution conteneurisée, un backend unique pilotant OpenTofu, et un stockage persistant via S3. Le backend agit comme point de convergence, en gérant toutes les interactions entre les autres composants.
 
 #### Vue d’ensemble des conteneurs
 
