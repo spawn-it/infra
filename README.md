@@ -515,8 +515,7 @@ toutes les 10 secondes sur le service ciblé, et transmet le résultat aux clien
 d’être alerté en temps réel en cas de divergence entre l’état attendu et l’état réel.
 
 Chaque exécution de plan, d’apply ou de destroy est encapsulée dans un job identifié par un UUID unique. Ces jobs sont 
-stockés dans une table en mémoire, ce qui permet de suivre leur progression et de les interrompre à tout moment. Une requête 
-REST pour `apply` ou `destroy` un interropera le plan en cours, et le backend exécutera la commande OpenTofu correspondante.
+stockés dans une table en mémoire, ce qui permet de suivre leur progression et de les interrompre à tout moment. Une requête REST dédiée permet par exemple d’interrompre un `plan` ou un `apply` en cours, ce qui déclenche un `SIGTERM` sur le processus enfant associé.
 
 <img src="doc/img/plan.png" style="zoom:50%;" />
 
