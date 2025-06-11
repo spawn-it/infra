@@ -231,9 +231,7 @@ digraph {
 
 #### 3.5.1. Lecture et interprétation
 
-Le graphe est structuré autour d’un nœud racine, qui représente l’ensemble du plan d’exécution. Les formes du diagramme permettent d’identifier rapidement les différents types de nœuds : les variables sont en vert (icônes type fichier), les données locales apparaissent en violet, les ressources sont en beige, les providers en losange bleu, et les points de début/fin sont cerclés.
-
-Les nœuds les plus structurants de ce graphe sont ceux liés au module `docker_instances`, responsable du déploiement des conteneurs. On observe que les variables utilisateur (nom de l’image, ports, volumes, environnement, etc.) alimentent une étape de transformation locale (`processed_instances`), qui produit une structure exploitable dans le reste du graphe. À partir de là, OpenTofu évalue les dépendances techniques : image à télécharger, réseau Docker à détecter, provider à initialiser, et enfin conteneur à créer.
+Les nœuds les plus structurants de ce graphe sont ceux liés au module `docker_instances`, responsable du déploiement des conteneurs. On observe que les variables utilisateur (nom de l’image, ports, volumes, environnement, etc.) (se trouvant dans `instances`) alimentent une étape de transformation locale (`processed_instances`), qui produit une structure exploitable dans le reste du graphe. À partir de là, OpenTofu évalue les dépendances techniques : image à télécharger, réseau Docker à détecter, provider à initialiser, et enfin conteneur à créer.
 
 #### 3.5.2. Points de contrôle critiques
 
@@ -283,8 +281,6 @@ Création effective des conteneurs (`docker_container.instance`), qui dépend de
 #### 3.5.4. Points de synchronisation
 
 La synchronisation du plan est assurée par les dépendances explicites (via les attributs `depends_on`) et implicites (par référence de ressource). Par exemple, même sans `depends_on` manuel, le fait que `docker_container` utilise `docker_image` dans un attribut `image = ...` suffit à créer une relation dans le DAG.
-
-OpenTofu garantit donc un ordre strict pour la création des conteneurs : les variables sont chargées, le provider Docker est initialisé, le réseau est résolu, l’image est téléchargée, et seulement ensuite les conteneurs sont créés. Cela permet d’éviter les erreurs de type “ressource non prête” tout en laissant OpenTofu maximiser la parallélisation là où c’est possible.
 
 #### 3.5.5. Optimisations
 
@@ -438,6 +434,28 @@ Le backend SpawnIt gère automatiquement le cycle de vie de ces répertoires :
 > - Bien que nous ayons réussi à diminuer les risques de conflits grâce à l'isolation des répertoires de travail, il est important de noter que cette approche présente encore des limitations. Nous n'avons pas mis en place de mécanisme de verrouillage au niveau applicatif pour gérer les accès concurrentiels sur un même service. 
 > Le risque de corruption du dossier .terraform/ persiste si un utilisateur tente d'exécuter deux commandes OpenTofu en parallèle sur le même service (par exemple, un plan et un apply simultanés).
 > - Une solution simple consisterait à implémenter un mutex par service dans le backend Node.js. En utilisant une Map de mutex indexée par `{clientId}:{serviceId}`, on pourrait s'assurer qu'une seule opération OpenTofu s'exécute à la fois par service, tout en permettant la parallélisation entre différents services.
+
+
+#### 4.3.1. Le mutex applicatif
+Nous avons mis en place un mécanisme de verrouillage applicatif pour éviter les conflits liés à l’exécution simultanée 
+de commandes OpenTofu sur un même service. Ce choix a été motivé par la nature non thread-safe d’OpenTofu : lancer plusieurs 
+commandes (plan, apply, destroy) en parallèle dans le même répertoire de travail peut corrompre le dossier .terraform/ 
+ou provoquer des erreurs d’état difficiles à diagnostiquer.
+
+Pour garantir qu'une seule opération soit active à la fois pour un service donné, nous avons utilisé le module 
+async-lock dans notre service central (TofuService). Chaque couple {clientId}:{serviceId} est associé à un verrou unique. 
+Toute commande OpenTofu doit acquérir ce verrou avant de s’exécuter.
+```javascript
+const AsyncLock = require('async-lock');
+const actionLock = new AsyncLock();
+
+await actionLock.acquire(`${clientId}:${serviceId}`, async () => {
+  await OpentofuExecutor.executeAction(...);
+}, { timeout: 15 * 60 * 1000 });
+```
+
+Ce verrou protège l’ensemble de la séquence critique : synchronisation des fichiers, exécution des commandes, 
+gestion du state, etc. Il garantit l’intégrité des opérations tout en permettant une exécution parallèle entre services distincts.
 
 Maintenant que les bases sont posées, nous pouvons aborder le fonctionnement détaillé de SpawnIt, en commençant par la génération dynamique des configurations de service.
 
