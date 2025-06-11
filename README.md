@@ -437,11 +437,27 @@ Le backend SpawnIt gère automatiquement le cycle de vie de ces répertoires :
 > [!NOTE]
 > SpawnIt n'implémente pas toutes ces fonctionnalités de nettoyage, or cela pourrait être une amélioration future.
 
+> [!IMPORTANT] 
+> - Bien que nous ayons réussi à diminuer les risques de conflits grâce à l'isolation des répertoires de travail, il est 
+> important de noter que cette approche présente encore des limitations. Nous n'avons pas mis en place de mécanisme de 
+> verrouillage au niveau applicatif pour gérer les accès concurrentiels sur un même service. 
+> Le risque de corruption du dossier .terraform/ persiste si un utilisateur tente d'exécuter deux commandes OpenTofu en 
+> parallèle sur le même service (par exemple, un plan et un apply simultanés).
+> - Une solution simple consisterait à implémenter un mutex par service dans le backend Node.js. En utilisant une 
+> Map de mutex indexée par ${clientId}:${serviceId}, on pourrait s'assurer qu'une seule opération OpenTofu s'exécute 
+> à la fois par service, tout en permettant la parallélisation entre différents services.
+
+Maintenant que les bases sont posées, nous pouvons aborder le fonctionnement détaillé de SpawnIt, en commençant par la génération dynamique des configurations de service.
+
 ### 4.4. Génération dynamique de la configuration
 
-Chaque service déployable dans SpawnIt repose sur un template de configuration (`*.template.tfvars.json`) pré-enregistré dans le dossier `templates/` du bucket S3. Ces fichiers définissent la structure attendue pour instancier un service donné (ex. : base de données, serveur de jeu), en exposant des variables dynamiques typées.
+Chaque service déployable dans SpawnIt repose sur un template de configuration (`*.template.tfvars.json`) pré-enregistré 
+dans le dossier `templates/` du bucket S3. Ces fichiers définissent la structure attendue pour instancier un service 
+donné (ex. : base de données, serveur de jeu).
 
-Lorsque l’utilisateur soumet un formulaire via l’interface web, le frontend envoie au backend une requête contenant les valeurs saisies. Le backend récupère le template correspondant, remplit les champs avec les données utilisateur, y ajoute les métadonnées (provider, clientId, serviceId, etc.), et sérialise le tout dans un fichier `terraform.tfvars.json`.
+Lorsque l’utilisateur soumet un formulaire via l’interface web, le frontend envoie au backend une requête contenant les 
+valeurs saisies. Le backend récupère le configuration correspondant, ajoute des données de la logique métier et 
+sérialise le tout dans un fichier `terraform.tfvars.json`.
 
 <img src="doc/img/config.png" style="zoom:50%;" />
 
@@ -451,48 +467,56 @@ Ce fichier est ensuite stocké dans le chemin S3 suivant :
 clients/{clientId}/{serviceId}/terraform.tfvars.json
 ```
 
-À ce stade, aucune commande OpenTofu n’est exécutée. Cette phase ne fait que **préparer une configuration persistée**, qui pourra ensuite être validée, appliquée ou détruite à la demande.
+À ce stade, aucune commande OpenTofu n’est exécutée. Cette phase ne fait que **préparer une configuration persistée**, 
+qui pourra ensuite être validée, appliquée ou détruite à la demande.
 
 > [!NOTE]
 >
-> Le backend ne conserve aucune copie locale de ces fichiers : tout repose sur la lecture/écriture depuis S3. Cela garantit une résilience naturelle (statelessness) et une forte cohérence entre les différents composants.
+> TODO: Le backend applicatif utilise un modèle "sync before run". Une copie locale de ces fichiers dans le répertoire de travail dans le but de faciliter 
+> l'injection des variables au code OpenTofu lors d'une exécution et la visualisation de son contenu. 
+> A chaque `tofu plan / apply / destroy`, le backend télécharge le dossier ./workdirs/<clientId>/<serviceId>/ en entier.
+> Cela n'empêche pas de détruire le backend applicatif sans crainte, car les fichiers de configuration sont persistés dans S3.
 
 ### 4.5. Initialisation du répertoire de travail
 
-Pour chaque opération d’infrastructure (plan, apply, destroy), SpawnIt crée dynamiquement un répertoire de travail local, isolé pour le couple `(clientId, serviceId)`. Ce répertoire est instancié dans :
+Le backend applicatif SpawnIt utilise un modèle "sync before run" pour garantir la cohérence et la traçabilité des déploiements. 
+Cette approche consiste à maintenir une copie locale de tous les fichiers nécessaires dans le répertoire de travail, 
+facilitant ainsi l'injection des variables dans le code OpenTofu lors d'une exécution et la visualisation de son contenu pour le débogage.
 
-```
-./workdirs/{clientId}/{serviceId}/
-```
+#### 4.5.1. Processus de synchronisation
 
-Le backend y télécharge depuis S3 tous les fichiers nécessaires :
+Avant chaque exécution de commande OpenTofu `tofu plan / apply / destroy`, le backend applicatif suit un processus 
+rigoureux de synchronisation.
 
-- la configuration (`terraform.tfvars.json`),
-- le fichier d’état (`terraform.tfstate`), s’il existe,
-- et le backend config (`backend.tf.json`), généré dynamiquement si besoin.
 
-Une fois ce répertoire prêt, la commande `tofu init` est appelée avec les bons paramètres :
-
-- backend de type `s3`,
-- nom du bucket (`spawn-it-bucket`),
-- chemin du fichier d’état (`clients/{clientId}/{serviceId}/terraform.tfstate`),
-- credentials d’accès (MinIO ou AWS) injectés via des variables d’environnement.
+- Téléchargement complet : Le contenu du dossier S3 `clients/{clientId}/{serviceId}/` est entièrement téléchargé dans le 
+répertoire local `./workdirs/{clientId}/{serviceId}/`
+- Reconstruction de l'environnement : Tous les fichiers nécessaires sont reconstitués localement :
+  - terraform.tfvars.json : variables spécifiques au service
+  - info.json : fichier métadonnées contenant des informations sur le service (clientId, serviceId, etc.) (Pas nécessaire
+  mais utilisé pour la supervision et le suivi)
+- Exécution de `tofu init` : Le backend initialise le répertoire de travail avec les paramètres appropriés pour le backend S3. 
+Cette initialisation est idempotente, elle peut être recréée à froid à chaque appel, ce qui permet de garantir que chaque exécution part d’un état propre.
+- Exécution de la commande OpenTofu : Une fois le répertoire de travail prêt, la commande `tofu plan`, `tofu apply` ou `tofu destroy` est exécutée.
 
 <img src="doc/img/workdir.png" style="zoom:50%;" />
 
-Cette initialisation est idempotente. Si elle a déjà été faite pour ce service, elle peut être réutilisée. Sinon, elle est recréée à froid à chaque appel, ce qui permet de garantir que chaque exécution part d’un état propre.
-
-> [!NOTE] 
->
-> Ce mode de fonctionnement permet au backend d’être entièrement **stateless** : aucun fichier de configuration ou état n’est conservé durablement côté serveur. Même après un redémarrage, toutes les données peuvent être rechargées depuis S3.
-
+> [!NOTE]
+> - Un fichier `terraform.tfstate` est créé dans le répertoire de travail, mais il n'est pas utilisé pour la persistance de l'état.
+> Il est généré pour respecter la structure attendue par OpenTofu, mais l'état réel est stocké dans S3. Il est donc effaçable sans impact.
+> Le backend applicatif est donc totalement stateless.
 
 
 ### 4.6. Supervision et gestion des exécutions
 
-Pour détecter des modifications manuelles ou des dérives d’état (ex. : suppression d’un conteneur Docker en dehors de SpawnIt), une planification continue est mise en place pour chaque service actif. Le backend exécute automatiquement un `tofu plan` toutes les 10 secondes sur le service ciblé, et transmet le résultat aux clients connectés. Cela permet à l’utilisateur d’être alerté en temps réel en cas de divergence entre l’état attendu et l’état réel.
+Pour détecter des modifications manuelles ou des dérives d’état (ex. : suppression d’un conteneur Docker en dehors de SpawnIt), 
+une planification continue est mise en place pour chaque service actif. Le backend exécute automatiquement un `tofu plan` 
+toutes les 10 secondes sur le service ciblé, et transmet le résultat aux clients connectés. Cela permet à l’utilisateur 
+d’être alerté en temps réel en cas de divergence entre l’état attendu et l’état réel.
 
-Chaque exécution de plan, d’apply ou de destroy est encapsulée dans un job identifié par un UUID unique. Ces jobs sont stockés dans une table en mémoire, ce qui permet de suivre leur progression et de les interrompre à tout moment. Une requête REST dédiée permet par exemple d’interrompre un `plan` ou un `apply` en cours, ce qui déclenche un `SIGTERM` sur le processus enfant associé.
+Chaque exécution de plan, d’apply ou de destroy est encapsulée dans un job identifié par un UUID unique. Ces jobs sont 
+stockés dans une table en mémoire, ce qui permet de suivre leur progression et de les interrompre à tout moment. Une requête 
+REST pour `apply` ou `destroy` un interropera le plan en cours, et le backend exécutera la commande OpenTofu correspondante.
 
 <img src="doc/img/plan.png" style="zoom:50%;" />
 
