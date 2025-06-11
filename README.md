@@ -532,20 +532,68 @@ le provider source = "hashicorp/kubernetes"), et de
 l’ajouter au catalogue de services. Aucun changement n’est nécessaire côté backend, ni dans l’interface. Cette approche 
 rend le système particulièrement extensible.
 
-## 5. Discussion et limites
+## 5. Retour d’expérience
+OpenTofu remplit globalement ses promesses : il permet de décrire l’état désiré de l’infrastructure de manière déclarative
+et de s’en approcher automatiquement via des commandes simples comme plan, apply et destroy. Pour notre projet, il a parfaitement
+répondu au besoin d’orchestration, en offrant une structuration claire et modulaire. Cependant, dès que la logique devient
+un peu plus complexe (conditions, boucles imbriquées, gestion dynamique des ressources), la syntaxe HCL montre ses limites :
+elle devient verbeuse, difficile à appréhender, et peu adaptée à exprimer des comportements conditionnels riches.
+On atteint vite les limites dès qu’on veut modéliser une logique plus abstraite. Il manque une vraie notion de programmabilité :
+on ne peut pas construire des modules dynamiques ou composer des ressources proprement sans duplication.
+C’est déclaratif, mais peu expressif dès qu’on sort des cas simples. Un autre point problématique est la
+directive lifecycle.prevent_destroy, censée empêcher la suppression accidentelle de ressources. En réalité, elle n'empêche
+pas la destruction, mais fait échouer l’exécution avec une erreur bloquante — ce qui n'empêche pas l’état d’être modifié
+ou le plan de diverger, et ne protège donc pas réellement l’infrastructure : cela interrompt juste brutalement l’opération.
+Enfin, l’absence de notion intégrée de readiness (par exemple pour attendre qu’un conteneur soit réellement prêt ou
+qu’un bucket soit utilisable) nous a forcés à bricoler des délais fixes ou des modules spécifiques — une lacune
+importante pour un outil d’orchestration censé automatiser de bout en bout.
 
-Notre architecture modulaire permet à chaque composant, que ce soit le backend, les modules Terraform, ou les scripts de  déploiement d'être facilement réutilisables et extensibles. Le modèle de configuration utilisant les templates et les  variables rend l’extension du catalogue de services extrêmement simple. L’ajout d’un nouveau service ne nécessite aucune  modification du backend ni du frontend : il suffit de déposer un nouveau fichier template et de l’enregistrer dans le  fichier `catalog.json`. Le fait que l'application soit auto-déployable est une preuve de cohérence. Cette boucle fermée  illustre bien l’intention initiale du projet de tirer parti de l'interface déclarative pour la gestion d’infrastructure.
+L’un des aspects les plus déroutants d’OpenTofu est son fort couplage aux providers, qui sont responsables de
+l’interprétation et de l’exécution des ressources déclarées. Cette dépendance peut devenir problématique : certains
+providers se donnent la liberté de modifier automatiquement les attributs d’une ressource immédiatement après sa
+création (par exemple, en injectant des valeurs par défaut ou en réinterprétant certaines options). Cela crée un effet
+en chaîne lors d’un plan suivant : OpenTofu détecte un écart entre l’état réel et la configuration initiale, et propose
+alors de détruire et recréer la ressource, même si aucune modification fonctionnelle n’a été faite. Dans certains cas,
+cela peut mener à une boucle infinie de replanification, sans jamais atteindre un "état stable". Il existe un mécanisme
+pour contourner cela : l’attribut lifecycle { ignore_changes = [...] } permet d’ignorer certains champs lors de la
+comparaison entre l’état souhaité et l’état réel. Mais à partir du moment où l’on commence à ignorer des attributs pour
+stabiliser l’état, on s’éloigne du modèle déclaratif pur : on cesse de décrire précisément l’état désiré, et on demande
+simplement au moteur de “ne pas regarder ici”. Cela peut créer une illusion de stabilité tout en masquant des incohérences
+réelles.
 
+Le paradigme déclaratif s’est révélé extrêmement puissant dans le cadre de notre projet. Il permet de se concentrer sur
+l’état final désiré sans avoir à décrire étape par étape comment y parvenir. Plutôt que de gérer toute la logique de
+comment atteindre cet état, on peut entièrement déléguer cette responsabilité au moteur d’exécution. Cette approche
+favorise une meilleure lisibilité, une reproductibilité forte, et une structuration claire de l’infrastructure.
+Elle facilite également l’auto-documentation du système : en lisant un fichier .tf, on comprend immédiatement l’intention.
+Cependant, cette simplicité apparente cache une rigidité dès qu’on veut modéliser des comportements dynamiques ou
+dépendants du contexte d’exécution. Contrairement à une approche impérative où l’on peut facilement injecter des conditions,
+des boucles ou des structures dynamiques, le déclaratif impose un cadre figé. Cela oblige parfois à des contournements
+verbeux ou à une duplication excessive. On perd ainsi en expressivité ce qu’on gagne en simplicité.
+Pour des infrastructures simples ou standardisées, le déclaratif est un atout évident. Mais dès qu’on veut aller vers
+des comportements adaptatifs ou conditionnels, ses limites deviennent claires.
 
-API ouverte
-Gestion de UUID
-secrets
-réseau + volumes
+## 6. Améliorations possibles
 
-## 6. **Conclusion**
+- Sécurisation de l’API : actuellement, l’API est ouverte et ne vérifie pas systématiquement le token. Une validation
+  systématique de l’authentification permettrait de mieux sécuriser l’accès aux opérations sensibles.
 
-Notre projet démontre qu’il est possible de proposer une interface de déploiement légère et déclarative, sans sacrifier la flexibilité ni l’extensibilité. L’approche déclarative a joué un grand rôle dans la structuration du projet. En isolant chaque étape du déploiement et en les décrivant comme des modules indépendants, l’architecture reste lisible, reproductible et facilement testable. Cette structure a également facilité la mise en place de l’auto-hébergement, qui démontre la cohérence du modèle choisi.
+- Gestion des UUID : les identifiants clientId et serviceId sont générés aléatoirement sans vérifier s’ils existent déjà. Même si le risque de collision est faible, une vérification explicite permettrait d’éviter des comportements indéterminés.
 
-Plusieurs perspectives d’évolution sont identifiées. Il serait pertinent d’ajouter le support d’autres providers, tels que Kubernetes, Azure ou GCP, afin d’ouvrir SpawnIt à de nouveaux environnements.  Enfin, l’ajout d’un système de monitoring post-déploiement  même simple permettrait d’offrir un retour d’état en temps réel sans avoir à s’appuyer uniquement sur les plans Terraform.
+- Ajout de nouveaux fournisseurs : intégrer des providers supplémentaires comme Kubernetes, Azure ou GCP permettrait d’élargir les possibilités de déploiement sans changer la logique métier, grâce à l’architecture modulaire déjà en place.
 
-SpawnIt est donc à la fois une interface de déploiement, une démonstration de l’intérêt du paradigme déclaratif, et une base solide pour expérimenter ou industrialiser des workflows d’orchestration d’infrastructure modernes.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              
+- Amélioration de la gestion réseau et volumes :
+    - Le réseau Docker est créé à la volée s’il n’existe pas, mais reste totalement invisible dans l’interface — il pourrait être géré plus explicitement.
+    - Certains volumes sont déclarés dans les variables mais ne sont pas réellement créés ou utilisés dans les services déployés, ce qui pourrait être clarifié ou automatisé.
+
+- Support d’ECS (Elastic Container Service) : bien que nous utilisions EC2 (grâce à un quota gratuit), l’utilisation d’ECS pourrait simplifier et optimiser le déploiement de conteneurs dans le cloud à l’avenir.
+
+## 7. **Conclusion**
+
+Avec SpawnIt, nous avons cherché à réunir deux mondes souvent séparés : celui du développement logiciel, orienté
+expérience utilisateur, et celui de l’infrastructure cloud, souvent technique et peu accessible.
+En combinant Infrastructure-as-Code, logique déclarative, API web et orchestration automatisée, nous avons conçu une
+plateforme capable de déployer des services complexes à la demande, en toute simplicité. OpenTofu s’est révélé un outil
+puissant pour exprimer l’intention d’infrastructure, bien que parfois limité dans les cas complexes où la logique
+dynamique ou les spécificités des providers créent des frictions. Notre application illustre concrètement ce qu’il est
+possible d’accomplir avec une bonne intégration d’OpenTofu et un paradigme déclaratif.

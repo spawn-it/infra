@@ -45,6 +45,8 @@ resource "docker_container" "instance" {
     }
   }
 
+  # Mount the Docker socket if 'acces_to_docker' is true
+  # This allows the container to interact with the Docker daemon on the host
   dynamic "mounts" {
     for_each = var.acces_to_docker ? [1] : []
     content {

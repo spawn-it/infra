@@ -1,0 +1,40 @@
+digraph {
+  // Forme des nœuds
+  node [shape=box];
+
+  // Variables d'entrée (note)
+  "var.instances" [shape=note];
+  "var.host_aws_access_key_id" [shape=note];
+  "var.host_aws_secret_access_key" [shape=note];
+  "var.host_aws_default_region" [shape=note];
+
+  // Local
+  "local.processed_instances";
+
+  // Module
+  "module.docker_instances";
+
+  // Ressources internes au module
+  "docker_container.instance";
+  "docker_image.instance";
+  "docker_network.custom_network";
+
+  // Provider
+  "provider[kreuzwerker/docker]" [shape=diamond];
+
+  // Dépendances
+  "var.instances" -> "local.processed_instances";
+  "var.host_aws_access_key_id" -> "local.processed_instances";
+  "var.host_aws_secret_access_key" -> "local.processed_instances";
+  "var.host_aws_default_region" -> "local.processed_instances";
+
+  "local.processed_instances" -> "module.docker_instances";
+
+  "module.docker_instances" -> "docker_container.instance";
+  "module.docker_instances" -> "docker_image.instance";
+  "module.docker_instances" -> "docker_network.custom_network";
+
+  "provider[kreuzwerker/docker]" -> "docker_container.instance";
+  "provider[kreuzwerker/docker]" -> "docker_image.instance";
+  "provider[kreuzwerker/docker]" -> "docker_network.custom_network";
+}
