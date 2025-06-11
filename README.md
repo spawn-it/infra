@@ -444,7 +444,7 @@ Le backend SpawnIt gère automatiquement le cycle de vie de ces répertoires :
 > Le risque de corruption du dossier .terraform/ persiste si un utilisateur tente d'exécuter deux commandes OpenTofu en 
 > parallèle sur le même service (par exemple, un plan et un apply simultanés).
 > - Une solution simple consisterait à implémenter un mutex par service dans le backend Node.js. En utilisant une 
-> Map de mutex indexée par ${clientId}:${serviceId}, on pourrait s'assurer qu'une seule opération OpenTofu s'exécute 
+> Map de mutex indexée par `{clientId}:{serviceId}`, on pourrait s'assurer qu'une seule opération OpenTofu s'exécute 
 > à la fois par service, tout en permettant la parallélisation entre différents services.
 
 Maintenant que les bases sont posées, nous pouvons aborder le fonctionnement détaillé de SpawnIt, en commençant par la génération dynamique des configurations de service.
@@ -523,26 +523,47 @@ En cas de redémarrage du backend, cette table de jobs est perdue, mais cela n�
 
 > [!NOTE]
 >
-> Ce modèle simple permet d’assurer une supervision efficace sans mécanisme de file ou de stockage distribué.
+> Un service est considéré comme "divergent" si est seulement si :
+> - Son état réel (infrastructure déployée) ne correspond pas à l'état attendu (configuration stockée)
+> - ET la dernière opération enregistrée n'est pas cohérente avec l'état observé
+> 
+> Exemples de divergence :
+> - Configuration marquée "applied": true (dernière opération = apply) mais tofu plan détecte des ressources manquantes
+> - Configuration marquée "applied": false (dernière opération = destroy) mais tofu plan détecte des ressources existantes
 
-### 4.7. Abstraction des providers
+### 4.7. Abstraction des providers cloud
 
-L’un des gros avantage de SpawnIt est sa capacité à déployer sur plusieurs environnements sans changer la logique métier. Le backend ne contient aucune logique spécifique à un provider donné. Le fonctionnement reste identique que l’on déploie en local (via Docker) ou dans le cloud (via AWS EC2).
+L’un des gros avantage de SpawnIt est sa capacité à déployer sur plusieurs environnements sans changer la logique métier. 
+Le backend ne contient aucune logique spécifique à un provider donné. Le fonctionnement reste identique que l’on déploie 
+en local (via Docker) ou dans le cloud (via AWS EC2).
 
 Cette abstraction repose sur deux mécanismes :
 
-1. Chaque module Terraform utilisé par SpawnIt respecte une interface commune : les noms de variables, les schémas d’entrée et les conventions de fichiers sont les mêmes, quel que soit le provider (Docker, AWS, etc.).
-2. La configuration envoyée par le frontend inclut une propriété `provider`, qui détermine dynamiquement le chemin du module à utiliser (par exemple `services/docker/instance` ou `services/aws/instance`).
+1. Chaque module Terraform utilisé par SpawnIt respecte une interface commune : les noms de variables, les schémas 
+d’entrée et les conventions de fichiers sont les mêmes, quel que soit le provider (Docker, AWS, etc.).
+2. La configuration envoyée par le frontend inclut une propriété `provider`, qui détermine dynamiquement le chemin du 
+module à utiliser (par exemple `services/docker/instance` ou `services/aws/instance`).
 
-Cette structure permet de rajouter un nouveau provider de manière totalement indépendante. Il suffit de créer un nouveau module Terraform respectant l’interface attendue (par exemple `services/k8s/instance` pour Kubernetes), et de l’ajouter au catalogue de services. Aucun changement n’est nécessaire côté backend, ni dans l’interface. Cette approche rend le système particulièrement extensible.
+Cette structure permet de rajouter un nouveau provider de manière totalement indépendante. Il suffit de créer un 
+nouveau module Terraform respectant l’interface attendue (par exemple `services/k8s/instance` pour Kubernetes en utilisant
+le provider source = "hashicorp/kubernetes"), et de 
+l’ajouter au catalogue de services. Aucun changement n’est nécessaire côté backend, ni dans l’interface. Cette approche 
+rend le système particulièrement extensible.
 
 ## 5. Discussion et limites
 
-Notre architecture modulaire permet à chaque composant, que ce soit le backend, les modules Terraform, ou les scripts de déploiement d'être facilement réutilisables et extensibles. Le modèle de configuration utilisant les templates et les variables rend l’extension du catalogue de services extrêmement simple. L’ajout d’un nouveau service ne nécessite aucune modification du backend ni du frontend : il suffit de déposer un nouveau fichier template et de l’enregistrer dans le fichier `catalog.json`. Le fait que l'application soit auto-déployable est une preuve de cohérence. Cette boucle fermée illustre bien l’intention initiale du projet de tirer parti de l'interface déclarative pour la gestion d’infrastructure.
+Notre architecture modulaire permet à chaque composant, que ce soit le backend, les modules Terraform, ou les scripts de 
+déploiement d'être facilement réutilisables et extensibles. Le modèle de configuration utilisant les templates et les 
+variables rend l’extension du catalogue de services extrêmement simple. L’ajout d’un nouveau service ne nécessite aucune 
+modification du backend ni du frontend : il suffit de déposer un nouveau fichier template et de l’enregistrer dans le 
+fichier `catalog.json`. Le fait que l'application soit auto-déployable est une preuve de cohérence. Cette boucle fermée 
+illustre bien l’intention initiale du projet de tirer parti de l'interface déclarative pour la gestion d’infrastructure.
 
-Certaines limitations subsistent. La persistance de l’état repose sur le backend S3. Si ce dernier devient indisponible, l’application devient inutilisable, car le backend ne conserve aucun cache local. Ce choix est volontaire (stateless complet), mais introduit une dépendance forte à la disponibilité de S3. Enfin, l’expérience utilisateur peut être altérée en cas d’erreurs de configuration. L’application ne valide pas de manière exhaustive les champs du formulaire utilisateur, ce qui peut provoquer des erreurs à l’exécution de Terraform difficiles à diagnostiquer pour un utilisateur non technique. Ce point pourrait être amélioré par une phase de pré-validation plus stricte côté backend.
 
-
+API ouverte
+Gestion de UUID
+secrets
+réseau + volumes
 
 ## 6. **Conclusion**
 
