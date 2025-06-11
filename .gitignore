@@ -37,3 +37,7 @@ terraform.rc
 
 *.terraform.lock.hcl
 
+./instances/.terraform/
+./volumes/.terraform/
+./networks/.terraform/
+./configs/.terraform/
