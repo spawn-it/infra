@@ -227,7 +227,7 @@ digraph {
 > [!NOTE]
 >
 > - Le graphe est généré par la commande `tofu graph` et peut être visualisé avec des outils comme Graphviz.
-> - La représentation graphique "dur" se trouve dans le fichier `./doc/instance_graph_sfdp.svg`. L'image ci-dessus est une version stylisée pour une meilleure lisibilité.
+> - La représentation graphique "dur" se trouve dans le fichier `./doc/graph_sfdp.svg`. L'image ci-dessus est une version stylisée pour une meilleure lisibilité.
 
 #### 3.5.1. Lecture et interprétation
 
