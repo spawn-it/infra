@@ -2,12 +2,14 @@ variable "host_aws_access_key_id" {
   description = "AWS Access Key ID from the host, to be passed to the backend container."
   type        = string
   sensitive   = true
+  default     = ""
 }
 
 variable "host_aws_secret_access_key" {
   description = "AWS Secret Access Key from the host, to be passed to the backend container."
   type        = string
   sensitive   = true
+  default     = ""
 }
 
 variable "host_aws_default_region" {
