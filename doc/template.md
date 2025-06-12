@@ -124,6 +124,18 @@ L’architecture repose sur un découplage entre la présentation, la logique d�
 **Keycloak**: Utilisé pour gérer l’authentification des utilisateurs via OpenID Connect. Il permet de sécuriser l’accès à l’interface web. Keycloak est configuré pour fonctionner en mode autonome, avec un volume persistant pour conserver les données des utilisateurs et des configurations.
 
 
+Il faut porter une attention particulière au composant Keycloak.
+Par souci de simplicité, nous avons choisi de configurer Keycloak directement via OpenTofu, comme n’importe quelle autre ressource.
+Cependant, ce choix comporte des risques : lorsqu’on détruit la ressource avec tofu destroy, toute la configuration associée (realms, clients, utilisateurs) est également supprimée.
+
+Or, dans notre cas, la logique métier repose fortement sur les clientId générés dans Keycloak. Si on détruit un client, puis qu’on le recrée, il obtient un nouvel UID.
+Résultat : des services déployés peuvent encore tourner en arrière-plan avec l'ancien UID, mais l’application perd la référence côté authentification.
+En clair, on se retrouve avec des ressources actives, mais plus accessibles car l'identifiant attendu côté app ne correspond plus à celui enregistré dans Keycloak.
+
+Ce genre de désynchronisation peut casser l’expérience utilisateur ou générer des erreurs difficiles à diagnostiquer.
+Une bonne pratique serait de dissocier la gestion de Keycloak de celle du reste de l’infrastructure, ou de sauvegarder sa configuration indépendamment pour éviter ces pertes.
+
+
 
 \pagebreak
 
@@ -556,18 +568,7 @@ Avant chaque exécution de commande OpenTofu `tofu plan / apply / destroy`, le b
 
 
 
-Un fichier `terraform.tfstate` est créé dans le répertoire de travail, mais il n'est pas utilisé pour la persistance de l'état. Il est généré pour respecter la structure attendue par OpenTofu, mais l'état réel est stocké dans S3. Il est donc effaçable sans impact. Le backend applicatif est donc totalement stateless. 
-
-Il faut porter une attention particulière au composant Keycloak.
-Par souci de simplicité, nous avons choisi de configurer Keycloak directement via OpenTofu, comme n’importe quelle autre ressource.
-Cependant, ce choix comporte des risques : lorsqu’on détruit la ressource avec tofu destroy, toute la configuration associée (realms, clients, utilisateurs) est également supprimée.
-
-Or, dans notre cas, la logique métier repose fortement sur les clientId générés dans Keycloak. Si on détruit un client, puis qu’on le recrée, il obtient un nouvel UID.
-Résultat : des services déployés peuvent encore tourner en arrière-plan avec l'ancien UID, mais l’application perd la référence côté authentification.
-En clair, on se retrouve avec des ressources actives, mais plus accessibles car l'identifiant attendu côté app ne correspond plus à celui enregistré dans Keycloak.
-
-Ce genre de désynchronisation peut casser l’expérience utilisateur ou générer des erreurs difficiles à diagnostiquer.
-Une bonne pratique serait de dissocier la gestion de Keycloak de celle du reste de l’infrastructure, ou de sauvegarder sa configuration indépendamment pour éviter ces pertes.
+Un fichier `terraform.tfstate` est créé dans le répertoire de travail, mais il n'est pas utilisé pour la persistance de l'état. Il est généré pour respecter la structure attendue par OpenTofu, mais l'état réel est stocké dans S3. Il est donc effaçable sans impact. Le backend applicatif est donc totalement stateless.
 
 
 
