@@ -165,10 +165,27 @@ Le script `all-deploy.sh` est le point d’entrée principal. Il déclenche succ
 
 Chaque script utilise son propre répertoire de travail, appelle `tofu init`, puis applique l’infrastructure avec `tofu apply -auto-approve`. L’approche est modulaire, idempotente et parfaitement compatible avec une intégration CI/CD.
 
-Ce choix a été fait pour garantir que chaque étape du déploiement est indépendante et peut être testée ou modifiée sans affecter les autres. Cette granularité nous permet de détruire ou de mettre à jour des parties spécifiques de l'infrastructure sans avoir à redéployer l'ensemble de l'application. Avec OpenTofu, il est possible de cibler des ressources précises à détruire ou modifier, mais cela est déconseillé. Une suppression partielle peut rompre les dépendances implicites du graphe d’infrastructure. Des ressources dépendantes risquent de rester orphelines, causant des incohérences difficiles à corriger automatiquement. Un délai de 20 secondes a été introduit entre chaque étape de déploiement pour permettre aux conteneurs de correctement s'initialiser avant de passer à l’étape suivante. Cela évite les erreurs liées à des ressources non prêtes. 
+Ce choix a été fait pour garantir que chaque étape du déploiement est indépendante et peut être testée ou modifiée sans affecter les autres. Cette granularité nous permet de détruire ou de mettre à jour des parties spécifiques de l'infrastructure sans avoir à redéployer l'ensemble de l'application. Avec OpenTofu, il est possible de cibler des ressources précises à détruire ou modifier, mais cela est déconseillé. Une suppression partielle peut rompre les dépendances implicites du graphe d’infrastructure. Des ressources dépendantes risquent de rester orphelines, causant des incohérences difficiles à corriger automatiquement. Un délai de 20 secondes a été introduit entre chaque étape de déploiement pour permettre aux conteneurs de correctement s'initialiser avant de passer à l’étape suivante. Cela évite les erreurs liées à des ressources non prêtes.
 
 ![](img/deploy.svg)
 
+### 3.3.1. Problème Keycloak
+
+Un détail important à connaître lors du déploiement concerne l’initialisation de Keycloak.
+Lorsqu’on exécute ./all-deploy.sh, il arrive que Keycloak ne soit pas encore prêt au moment où le script essaie de le configurer (par exemple pour créer les realms, les utilisateurs ou les clients).
+Dans ce cas, certaines étapes de configuration échouent silencieusement ou partiellement, ce qui peut entraîner des incohérences dans l’état final.
+
+Pas besoin de tout supprimer ni de déboguer à la main : il suffit généralement d’attendre quelques secondes que Keycloak termine son démarrage, puis de relancer le script ./all-deploy.sh.
+Cela rejouera les étapes de provisioning, de manière idempotente (grâce à OpenTofu), et appliquera correctement les configurations manquantes.
+
+Ce même problème peut aussi se produire au moment où le backend Node.js démarre : il tente de créer un singleton client Keycloak.
+S’il échoue parce que Keycloak n’est pas encore prêt, il garde un singleton invalide en mémoire.
+Là encore, la solution est simple : relancer le conteneur spawn-it-backend une fois Keycloak prêt, avec 
+
+Pour corriger ça, il suffit d’attendre que Keycloak soit bien initialisé, puis de redémarrer uniquement le conteneur du backend avec la commande suivante :
+```bash
+docker restart spawn-it-backend
+```
 
 
 ### 3.4. Modularité et réutilisabilité
