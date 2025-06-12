@@ -2,9 +2,6 @@
 set -euo pipefail
 
 # Populate your AWS credentials here
-export TF_VAR_host_aws_access_key_id=""
-export TF_VAR_host_aws_secret_access_key=""
-export TF_VAR_host_aws_default_region=""
 
 ACTION=${1:-apply}
 DELAY=20
