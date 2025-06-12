@@ -297,13 +297,19 @@ De la même manière, la ressource `data.docker_network.custom_network` est soll
 
 Enfin, `docker_image.instance` représente la récupération de l’image Docker (pull), elle aussi nécessaire à la création de tout conteneur. Ces trois nœuds — provider, réseau, image — structurent le début du plan d’exécution.
 
-**Variables d'entrée** 
 
-Ces variables sont récupérées depuis les variables d'environnement de la machine hôte pour être injectées dans le container.
+
+Pour déployer des ressources sur des providers cloud, nous avons besoins de credentials. Ces derniers sont définis dans la machine hôte (variables d'environnement). Lors du déploiement, les variables d'enviornnement sont récupérées depuis l'hôte et sont injectées dans le container backend.
 
 - `var.host_aws_access_key_id` : authentification AWS pour les ressources hybrides
 - `var.host_aws_default_region` : région AWS par défaut
 - `var.host_aws_secret_access_key` : clé secrète AWS
+
+
+
+\pagebreak
+
+
 
 #### 3.5.3. Chaîne de dépendances critiques
 
@@ -353,6 +359,12 @@ La récupération des images Docker (`docker_image`) et la lecture du réseau (`
 
 Certains points restent des goulots d’étranglement : le provider Docker est centralisé, et toutes les opérations y transitent ; le réseau doit être résolu avant tout conteneur ; chaque image doit être disponible avant sa première utilisation. Malgré cela, OpenTofu exploite efficacement les chemins parallèles du graphe pour gagner en vitesse dès que c’est possible.
 
+
+
+\pagebreak
+
+
+
 ## 4. Infrastructure - API‑First
 
 Dans ce chapitre, on ne parle plus de l’infrastructure qui exécute SpawnIt, mais de celle que SpawnIt déploie en tant que service, via son interface utilisateur.
@@ -362,7 +374,7 @@ Dans ce chapitre, on ne parle plus de l’infrastructure qui exécute SpawnIt, m
 - Provider AWS pour OpenTofu : Permet la création et la gestion d'instances EC2, de Security Groups.
 - Provider Docker pour OpenTofu : Permet la gestion des conteneurs, réseaux et volumes Docker
 - Node.js avec Express : Utilisé pour la gestion des routes, des middlewares et des requêtes HTTP.
-- Server-Sent Events (SSE) : fournit un retour au client web pendant les opérations OpenTofu (planification, application).
+- Server-Sent Events (SSE) : fournit un retour au client web pendant les opérations OpenTofu (plan, apply).
 - Next.js (React) : Choisi pour ses capacités de rendu côté serveur, et son écosystème React.
 - Material UI : Utilisée comme librairie de composants UI.
 
@@ -373,6 +385,11 @@ L’approche API‑First de SpawnIt vise à abstraire la complexité de Terrafor
 Le backend applicatif agit comme point d’orchestration central : il transforme les requêtes utilisateurs en configurations Terraform, déclenche localement les opérations `tofu`, et diffuse les résultats en temps réel. Il ne conserve aucun état durable ; toutes les données nécessaires à la reconstitution d’un déploiement sont stockées sur S3 (MinIO).
 
 L’utilisateur ne manipule donc jamais la couche IaC directement. Il choisit un service, renseigne quelques champs dans un formulaire, et le système se charge du reste : génération de la configuration, planification, application, supervision.
+
+\begin{figure}[!htb]
+    \centering
+    \includegraphics[width=0.35\textwidth]{/home/tim/Documents/PLM/infra/doc/img/containers.png}
+\end{figure}
 
 ### 4.2. Le backend OpenTofu
 
@@ -441,6 +458,12 @@ Cette approche présente plusieurs avantages :
 - Isolation complète : chaque service dispose de son propre fichier d'état (clients/{clientId}/{serviceId}/terraform.tfstate)
 - Sécurité : les credentials ne sont jamais stockés dans les fichiers de configuration
 - Compatibilité MinIO : les options skip_* et force_path_style permettent l'utilisation avec MinIO au lieu d'AWS S3
+
+
+
+\pagebreak
+
+
 
 ### 4.3. Isolation des répertoires de travail
 
@@ -561,7 +584,7 @@ Avant chaque exécution de commande OpenTofu `tofu plan / apply / destroy`, le b
 
 \begin{figure}[!htb]
     \centering
-    \includegraphics[width=0.5\textwidth]{/home/tim/Documents/PLM/infra/doc/img/workdir.png}
+    \includegraphics[width=0.4\textwidth]{/home/tim/Documents/PLM/infra/doc/img/workdir.png}
 \end{figure}
 
 
