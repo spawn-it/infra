@@ -211,6 +211,12 @@ modules/
 │   └── volumes/              # Déclaration de volumes Docker  
 ```
 
+
+
+\pagebreak
+
+
+
 #### 3.4.1. Utilisation concrète : création de dossiers S3
 
 Imaginons que l’on souhaite créer des dossiers dans notre bucket MinIO/S3, par exemple pour organiser les fichiers propres à chaque client. Grâce à la modularité, nous utilisons le même module `folder` pour deux cas d’usage différents :
@@ -532,6 +538,12 @@ SpawnIt n'implémente pas toutes ces fonctionnalités de nettoyage, or cela pour
 
 Bien que nous ayons réussi à diminuer les risques de conflits grâce à l'isolation des répertoires de travail, il est important de noter que cette approche présente encore des limitations. Nous n'avons pas mis en place de mécanisme de verrouillage au niveau applicatif pour gérer les accès concurrentiels sur un même service. Le risque de corruption du dossier .terraform/ persiste si un utilisateur tente d'exécuter deux commandes OpenTofu en parallèle sur le même service (par exemple, un plan et un apply simultanés).
 
+
+
+\pagebreak
+
+
+
 #### 4.3.1. Le mutex applicatif
 
 Nous avons mis en place un mécanisme de verrouillage applicatif pour éviter les conflits liés à l’exécution simultanée  de commandes OpenTofu sur un même service. Ce choix a été motivé par la nature non thread-safe d’OpenTofu : lancer plusieurs commandes (plan, apply, destroy) en parallèle dans le même répertoire de travail peut corrompre le dossier .terraform/ ou provoquer des erreurs d’état difficiles à diagnostiquer.
@@ -553,12 +565,6 @@ Ce verrou protège l’ensemble de la séquence critique : synchronisation des f
 
 Maintenant que les bases sont posées, nous pouvons aborder le fonctionnement détaillé de SpawnIt, en commençant par la génération dynamique des configurations de service.
 
-
-
-\pagebreak
-
-
-
 ### 4.4. Génération dynamique de la configuration
 
 Chaque service déployable dans SpawnIt repose sur un template de configuration (`*.template.tfvars.json`) pré-enregistré dans le dossier `templates/` du bucket S3. Ces fichiers définissent la structure attendue pour instancier un service  donné (ex. : base de données, serveur de jeu).
@@ -579,6 +585,12 @@ clients/{clientId}/{serviceId}/terraform.tfvars.json
 À ce stade, aucune commande OpenTofu n’est exécutée. Cette phase ne fait que **préparer une configuration persistée**, qui pourra ensuite être validée, appliquée ou détruite à la demande.
 
 Le backend applicatif utilise un modèle "sync before run". Une copie locale de ces fichiers dans le répertoire de travail dans le but de faciliter  l'injection des variables au code OpenTofu lors d'une exécution et la visualisation de son contenu. A chaque `tofu plan / apply / destroy`, le backend télécharge le dossier  /workdirs/<clientId>/<serviceId>/ en entier.Cela n'empêche pas de détruire le backend applicatif sans crainte, car les fichiers de configuration sont persistés dans S3.
+
+
+
+\pagebreak
+
+
 
 ### 4.5. Initialisation du répertoire de travail
 
