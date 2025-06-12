@@ -401,7 +401,7 @@ Dans ce chapitre, on ne parle plus de l’infrastructure qui exécute SpawnIt, m
 - Material UI : Utilisée comme librairie de composants UI.
 
 Les utilisateurs pour pouvoir utiliser l'application:
-````
+````json
 {
   "default_users": [
     {
