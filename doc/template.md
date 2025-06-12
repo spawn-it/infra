@@ -102,9 +102,16 @@ Les providers utilisés pour Docker et MinIO ne sont pas des providers officiels
 
 ### 3.2. Architecture
 
-L’architecture repose sur un découplage entre la présentation, la logique d’orchestration, et l’infrastructure cible. Elle est conçue de manière modulaire et stateless, avec une exécution conteneurisée, un backend unique pilotant OpenTofu, et un stockage persistant via S3. Le backend agit comme point de convergence, en gérant toutes les interactions entre les autres composants.
+L’architecture repose sur un découplage entre la présentation, la logique d’orchestration, et l’infrastructure cible. Elle est conçue de manière modulaire et stateless, avec une exécution conteneurisée, un backend pilotant OpenTofu, et un stockage via S3. Le backend agit comme point de convergence, gérant toutes les interactions entre les autres composants.
 
-![](img/structure.svg)
+
+
+\begin{figure}[!htb]
+    \centering
+    \includegraphics[width=0.7\textwidth]{/home/tim/Documents/PLM/infra/doc/img/structure.png}
+\end{figure}
+
+
 
 #### Vue d’ensemble des conteneurs
 
@@ -124,17 +131,9 @@ L’architecture repose sur un découplage entre la présentation, la logique d�
 **Keycloak**: Utilisé pour gérer l’authentification des utilisateurs via OpenID Connect. Il permet de sécuriser l’accès à l’interface web. Keycloak est configuré pour fonctionner en mode autonome, avec un volume persistant pour conserver les données des utilisateurs et des configurations.
 
 
-Il faut faire particulièrement attention au composant Keycloak.
-Pour des raisons de simplicité et d’uniformité avec le reste de l’infrastructure, nous avons choisi de gérer entièrement Keycloak avec OpenTofu : sa création, mais aussi sa configuration (realms, clients, utilisateurs).
+Pour des raisons de simplicité et d’uniformité avec le reste de l’infrastructure, nous avons choisi de gérer entièrement Keycloak avec OpenTofu : sa création, mais aussi sa configuration (realms, clients, utilisateurs). Ce choix a une conséquence importante : si l’on détruit la ressource avec tofu destroy, toute la configuration est perdue. Et cela peut poser problème, car notre logique métier repose sur les clientId générés dans Keycloak. En cas de recréation, ces identifiants changent — les nouveaux UID ne correspondent plus à ceux utilisés par les services existants. Les services peuvent continuer à tourner, mais l’application ne peut plus les authentifier : on a alors une perte de référence côté applicatif.
 
-Ce choix a une conséquence importante : si l’on détruit la ressource avec tofu destroy, toute la configuration est perdue. Et cela peut poser problème, car notre logique métier repose sur les clientId générés dans Keycloak.
-En cas de recréation, ces identifiants changent — les nouveaux UID ne correspondent plus à ceux utilisés par les services existants.
-Les services peuvent continuer à tourner, mais l’application ne peut plus les authentifier : on a alors une perte de référence côté applicatif.
-
-La solution naturelle aurait été d’ajouter un volume persistant sur Keycloak, pour conserver sa configuration entre les redéploiements.
-Mais nous avons volontairement choisi de ne pas modifier le code à ce stade du projet, afin de garder l’infrastructure telle quelle et de ne pas introduire de changements tardifs.
-
-C’est donc un point de vigilance important : en l’état actuel, toute destruction de Keycloak implique une perte complète de configuration, et par conséquent une instabilité potentielle de l’infrastructure si des services dépendent encore des anciens identifiants.
+La solution naturelle aurait été d’ajouter un volume persistant sur Keycloak, pour conserver sa configuration entre les redéploiements. Mais nous avons volontairement choisi de ne pas modifier le code à ce stade du projet, afin de garder l’infrastructure telle quelle et de ne pas introduire de changements tardifs. C’est donc un point de vigilance : en l’état actuel, toute destruction de Keycloak implique une perte complète de configuration, et par conséquent une instabilité potentielle de l’infrastructure si des services dépendent encore des anciens identifiants.
 
 
 
