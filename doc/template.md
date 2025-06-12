@@ -124,16 +124,17 @@ L’architecture repose sur un découplage entre la présentation, la logique d�
 **Keycloak**: Utilisé pour gérer l’authentification des utilisateurs via OpenID Connect. Il permet de sécuriser l’accès à l’interface web. Keycloak est configuré pour fonctionner en mode autonome, avec un volume persistant pour conserver les données des utilisateurs et des configurations.
 
 
-Il faut porter une attention particulière au composant Keycloak.
-Par souci de simplicité, nous avons choisi de configurer Keycloak directement via OpenTofu, comme n’importe quelle autre ressource.
-Cependant, ce choix comporte des risques : lorsqu’on détruit la ressource avec tofu destroy, toute la configuration associée (realms, clients, utilisateurs) est également supprimée.
+Il faut faire particulièrement attention au composant Keycloak.
+Pour des raisons de simplicité et d’uniformité avec le reste de l’infrastructure, nous avons choisi de gérer entièrement Keycloak avec OpenTofu : sa création, mais aussi sa configuration (realms, clients, utilisateurs).
 
-Or, dans notre cas, la logique métier repose fortement sur les clientId générés dans Keycloak. Si on détruit un client, puis qu’on le recrée, il obtient un nouvel UID.
-Résultat : des services déployés peuvent encore tourner en arrière-plan avec l'ancien UID, mais l’application perd la référence côté authentification.
-En clair, on se retrouve avec des ressources actives, mais plus accessibles car l'identifiant attendu côté app ne correspond plus à celui enregistré dans Keycloak.
+Ce choix a une conséquence importante : si l’on détruit la ressource avec tofu destroy, toute la configuration est perdue. Et cela peut poser problème, car notre logique métier repose sur les clientId générés dans Keycloak.
+En cas de recréation, ces identifiants changent — les nouveaux UID ne correspondent plus à ceux utilisés par les services existants.
+Les services peuvent continuer à tourner, mais l’application ne peut plus les authentifier : on a alors une perte de référence côté applicatif.
 
-Ce genre de désynchronisation peut casser l’expérience utilisateur ou générer des erreurs difficiles à diagnostiquer.
-Une bonne pratique serait de dissocier la gestion de Keycloak de celle du reste de l’infrastructure, ou de sauvegarder sa configuration indépendamment pour éviter ces pertes.
+La solution naturelle aurait été d’ajouter un volume persistant sur Keycloak, pour conserver sa configuration entre les redéploiements.
+Mais nous avons volontairement choisi de ne pas modifier le code à ce stade du projet, afin de garder l’infrastructure telle quelle et de ne pas introduire de changements tardifs.
+
+C’est donc un point de vigilance important : en l’état actuel, toute destruction de Keycloak implique une perte complète de configuration, et par conséquent une instabilité potentielle de l’infrastructure si des services dépendent encore des anciens identifiants.
 
 
 
@@ -491,9 +492,6 @@ Le backend SpawnIt gère automatiquement le cycle de vie de ces répertoires :
 SpawnIt n'implémente pas toutes ces fonctionnalités de nettoyage, or cela pourrait être une amélioration future.
 
 Bien que nous ayons réussi à diminuer les risques de conflits grâce à l'isolation des répertoires de travail, il est important de noter que cette approche présente encore des limitations. Nous n'avons pas mis en place de mécanisme de verrouillage au niveau applicatif pour gérer les accès concurrentiels sur un même service. Le risque de corruption du dossier .terraform/ persiste si un utilisateur tente d'exécuter deux commandes OpenTofu en parallèle sur le même service (par exemple, un plan et un apply simultanés).
-
-Une solution simple consisterait à implémenter un mutex par service dans le backend Node.js. En utilisant une Map de mutex indexée par `{clientId}:{serviceId}`, on pourrait s'assurer qu'une seule opération OpenTofu s'exécute à la fois par service, tout en permettant la parallélisation entre différents services.
-
 
 #### 4.3.1. Le mutex applicatif
 
