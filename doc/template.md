@@ -400,6 +400,26 @@ Dans ce chapitre, on ne parle plus de l’infrastructure qui exécute SpawnIt, m
 - Next.js (React) : Choisi pour ses capacités de rendu côté serveur, et son écosystème React.
 - Material UI : Utilisée comme librairie de composants UI.
 
+Les utilisateurs pour pouvoir utiliser l'application:
+````
+{
+  "default_users": [
+    {
+      "username": "alice.dubois",
+      "password": "ChangeMe123!"
+    },
+    {
+      "username": "bob.martin",
+      "password": "ChangeMe123!"
+    },
+    {
+      "username": "charlie.dupont",
+      "password": "ChangeMe123!"
+    }
+  ]
+}
+````
+
 ### 4.1. Principe et architecture API‑First
 
 L’approche API‑First de SpawnIt vise à abstraire la complexité de Terraform/OpenTofu du point de vue de l’utilisateur. Contrairement à une approche classique où l’utilisateur manipule directement des fichiers `.tf`, ici toutes les opérations sont pilotées via des requêtes HTTP.
