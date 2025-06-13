@@ -8,9 +8,9 @@ locals {
         env_vars = merge(
           inst_config.env_vars,
           {
-            "AWS_ACCESS_KEY_ID"     = var.host_aws_access_key_id
-            "AWS_SECRET_ACCESS_KEY" = var.host_aws_secret_access_key
-            "AWS_DEFAULT_REGION"    = var.host_aws_default_region
+            "TF_VAR_aws_access_key_id"     = var.host_aws_access_key_id
+            "TF_VAR_aws_secret_access_key" = var.host_aws_secret_access_key
+            "TF_VAR_aws_default_region"    = var.host_aws_default_region
           }
         )
       } : {}
